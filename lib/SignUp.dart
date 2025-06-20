@@ -1,7 +1,9 @@
-import 'package:coincraze/HomeScreen.dart';
+import 'package:coincraze/LoginScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,7 +15,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderStateMixin {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController ConfirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController phoneNumberController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -23,20 +25,17 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    // Initialize AnimationController
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    // Define SlideTransition animation
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(2, 0.4), // Slide from slightly below
-      end: Offset.zero, // End at original position
+      begin: const Offset(2, 0.4),
+      end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.ease,
     ));
-    // Start the animation
     _animationController.forward();
   }
 
@@ -45,6 +44,8 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     _animationController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
+    phoneNumberController.dispose();
     super.dispose();
   }
 
@@ -54,14 +55,17 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     });
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleSignUp() async {
     setState(() {
       _isLoading = true;
     });
 
     final email = emailController.text.trim();
+    final phoneNumber = phoneNumberController.text.trim();
     final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
 
+    // Client-side validation
     if (email.isEmpty || !email.contains('@')) {
       setState(() {
         _isLoading = false;
@@ -69,6 +73,19 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please enter a valid email'),
+          backgroundColor: const Color(0xFFD1493B),
+        ),
+      );
+      return;
+    }
+
+    if (phoneNumber.isEmpty || phoneNumber.length < 10) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a valid phone number (minimum 10 digits)'),
           backgroundColor: const Color(0xFFD1493B),
         ),
       );
@@ -88,10 +105,56 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      CupertinoPageRoute(builder: (context) => Homescreen()),
-    );
+    if (password != confirmPassword) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: const Color(0xFFD1493B),
+        ),
+      );
+      return;
+    }
+
+    // API call to backend
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:3000/signup'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'phoneNumber': phoneNumber,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        // Success: Navigate to Login Screen
+        Navigator.pushReplacement(
+          context,
+          CupertinoPageRoute(builder: (context) => LoginScreen()),
+        );
+      } else {
+        // Handle error from backend
+        final error = json.decode(response.body)['error'] ?? 'Sign-up failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: const Color(0xFFD1493B),
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle network or other errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: const Color(0xFFD1493B),
+        ),
+      );
+    }
 
     setState(() {
       _isLoading = false;
@@ -104,7 +167,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color.fromARGB(255, 41, 53, 60), Colors.white], // Dark grey to white gradient
+            colors: [Color.fromARGB(255, 41, 53, 60), Colors.white],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -172,21 +235,14 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       ),
                     ),
                   ),
-                   const SizedBox(height: 16.0),
+                  const SizedBox(height: 16.0),
                   SlideTransition(
                     position: _slideAnimation,
                     child: TextField(
                       controller: phoneNumberController,
-                     // obscureText: ,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.phone, color: Colors.grey),
-                        // suffixIcon: IconButton(
-                        //   icon: Icon(
-                        //     _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        //     color: Colors.grey,
-                        //   ),
-                        //   onPressed: _togglePasswordVisibility,
-                        // ),
                         hintText: 'Phone Number',
                         hintStyle: GoogleFonts.poppins(color: Colors.grey),
                         filled: true,
@@ -224,11 +280,11 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       ),
                     ),
                   ),
-                   const SizedBox(height: 16.0),
+                  const SizedBox(height: 16.0),
                   SlideTransition(
                     position: _slideAnimation,
                     child: TextField(
-                      controller: ConfirmPasswordController,
+                      controller: confirmPasswordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock, color: Colors.grey),
@@ -250,7 +306,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       ),
                     ),
                   ),
-                 
+                  const SizedBox(height: 16.0),
                   SlideTransition(
                     position: _slideAnimation,
                     child: Align(
@@ -282,7 +338,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD1493B)),
                           )
                         : ElevatedButton(
-                            onPressed: _handleLogin,
+                            onPressed: _handleSignUp,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(255, 0, 0, 0),
                               padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
@@ -292,7 +348,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               minimumSize: const Size(double.infinity, 50),
                             ),
                             child: Text(
-                              'Login',
+                              'Sign Up', // Changed from 'Login' to 'Sign Up'
                               style: GoogleFonts.poppins(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.w600,
@@ -308,7 +364,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Don't have an account? ",
+                          "Already have an account? ",
                           style: GoogleFonts.poppins(
                             fontSize: 14.0,
                             color: Colors.grey[600],
@@ -316,7 +372,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                         ),
                         GestureDetector(
                           onTap: () {
-                          Navigator.pop(context);
+                            Navigator.pop(context);
                           },
                           child: Text(
                             'Sign In',

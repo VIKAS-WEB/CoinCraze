@@ -1,8 +1,13 @@
-import 'package:coincraze/HomeScreen.dart';
+import 'package:coincraze/AuthManager.dart';
+import 'package:coincraze/BottomBar.dart';
+
 import 'package:coincraze/SignUp.dart';
+import 'package:coincraze/newKyc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,7 +16,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -26,14 +32,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(2, 0.4),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.ease,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(2, 0.4), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.ease),
+        );
     _animationController.forward();
+    _initAuthManager(); // Initialize AuthManager
+  }
+
+  Future<void> _initAuthManager() async {
+    await AuthManager().init(); // Initialize Hive and load saved details
   }
 
   @override
@@ -58,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final email = emailController.text.trim();
     final password = passwordController.text;
 
+    // Client-side validation
     if (email.isEmpty || !email.contains('@')) {
       setState(() {
         _isLoading = false;
@@ -84,10 +93,56 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      CupertinoPageRoute(builder: (context) => Homescreen()),
-    );
+    // API call to backend
+    try {
+      print('Sending request to http://10.0.2.2:3000/login');
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:3000/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
+      );
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      final loginResponse = json.decode(
+        response.body,
+      ); // Define loginResponse here
+
+      if (response.statusCode == 200) {
+        await AuthManager().saveLoginDetails(loginResponse);
+        print(
+          'User data saved: Email = ${AuthManager().email}, UserId = ${AuthManager().userId}',
+        ); // Save all details
+
+        // Navigate to Kyc Screen
+        if (AuthManager().kycCompleted == true) {
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(builder: (context) => MainScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            CupertinoPageRoute(builder: (context) => NewKYC()));
+        }
+      } else {
+        final error = loginResponse['error'] ?? 'Login failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: const Color(0xFFD1493B),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error occurred: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: const Color(0xFFD1493B),
+        ),
+      );
+    }
 
     setState(() {
       _isLoading = false;
@@ -127,7 +182,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   child: Center(
                     child: SlideTransition(
                       position: _slideAnimation,
-                      child: Image.asset('assets/images/whiteLogo.png', width: 290),
+                      child: Image.asset(
+                        'assets/images/whiteLogo.png',
+                        width: 290,
+                      ),
                     ),
                   ),
                 ),
@@ -135,16 +193,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32.0,
+                    vertical: 10.0,
+                  ),
                   child: Column(
                     children: [
-                      SlideTransition(
-                        position: _slideAnimation,
-                        // child: Padding(
-                        //   padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                        //   child: Divider(color: const Color.fromARGB(153, 190, 192, 192), thickness: 1),
-                        // ),
-                      ),
                       const SizedBox(height: 20),
                       SlideTransition(
                         position: _slideAnimation,
@@ -158,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 10),
                       SlideTransition(
                         position: _slideAnimation,
                         child: Text(
@@ -177,7 +231,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.email, color: Colors.grey),
+                            prefixIcon: const Icon(
+                              Icons.email,
+                              color: Colors.grey,
+                            ),
                             hintText: 'Email',
                             hintStyle: GoogleFonts.poppins(color: Colors.grey),
                             filled: true,
@@ -196,10 +253,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           controller: passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.lock, color: Colors.grey),
+                            prefixIcon: const Icon(
+                              Icons.lock,
+                              color: Colors.grey,
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.grey,
                               ),
                               onPressed: _togglePasswordVisibility,
@@ -223,7 +285,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Forgot Password feature not implemented'),
+                                  content: Text(
+                                    'Forgot Password feature not implemented',
+                                  ),
                                   backgroundColor: const Color(0xFFD1493B),
                                 ),
                               );
@@ -243,13 +307,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         position: _slideAnimation,
                         child: _isLoading
                             ? const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD1493B)),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFD1493B),
+                                ),
                               )
                             : ElevatedButton(
                                 onPressed: _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color.fromARGB(255, 0, 0, 0),
-                                  padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+                                  backgroundColor: const Color.fromARGB(
+                                    255,
+                                    0,
+                                    0,
+                                    0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32.0,
+                                    vertical: 16.0,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15.0),
                                   ),
@@ -282,7 +356,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               onTap: () {
                                 Navigator.push(
                                   context,
-                                  CupertinoPageRoute(builder: (context) => const SignUpScreen()),
+                                  CupertinoPageRoute(
+                                    builder: (context) => const SignUpScreen(),
+                                  ),
                                 );
                               },
                               child: Text(
@@ -309,7 +385,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 }
 
-// Custom Clipper for curved container
 class CurvedClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -317,7 +392,7 @@ class CurvedClipper extends CustomClipper<Path> {
     path.lineTo(0, size.height);
     path.quadraticBezierTo(
       size.width / 2,
-      size.height - 50, // Move control point upward to create downward curve
+      size.height - 50,
       size.width,
       size.height,
     );
