@@ -1,4 +1,8 @@
+
+import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:coincraze/Services/api_service.dart';
 
 class CreateWalletScreen extends StatefulWidget {
   @override
@@ -8,11 +12,21 @@ class CreateWalletScreen extends StatefulWidget {
 class _CreateWalletScreenState extends State<CreateWalletScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  String? _selectedCurrency;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  // List of popular FIAT currencies
+  final List<String> _currencies = [
+    'USD',
+    'INR',
+    'EUR',
+    'GBP',
+    'JPY',
+    'CAD',
+    'AUD',
+  ];
 
   @override
   void initState() {
@@ -24,17 +38,14 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
-    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.3), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-        );
+    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.3), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
     _animationController.forward();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -53,7 +64,6 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              // Background decorative elements
               Positioned(
                 top: -50,
                 left: -50,
@@ -84,7 +94,6 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
                   ),
                 ),
               ),
-              // Main content
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
@@ -112,28 +121,28 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Create Your Wallet',
+                                'Create Your Fiat Wallet',
                                 style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 25,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
                                 ),
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Set up a new wallet to start your journey',
+                                'Select a currency to set up your wallet',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[600],
                                 ),
                               ),
                               SizedBox(height: 24),
-                              TextFormField(
-                                controller: _nameController,
+                              DropdownButtonFormField<String>(
+                                value: _selectedCurrency,
                                 decoration: InputDecoration(
-                                  labelText: 'Wallet Name',
+                                  labelText: 'Currency',
                                   prefixIcon: Icon(
-                                    Icons.account_balance_wallet,
+                                    Icons.monetization_on,
                                     color: const Color.fromARGB(255, 10, 10, 10),
                                   ),
                                   border: OutlineInputBorder(
@@ -142,35 +151,21 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
                                   filled: true,
                                   fillColor: Colors.grey[100],
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter a wallet name';
-                                  }
-                                  return null;
+                                hint: Text('Select Currency'),
+                                items: _currencies.map((currency) {
+                                  return DropdownMenuItem<String>(
+                                    value: currency,
+                                    child: Text(currency),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedCurrency = value;
+                                  });
                                 },
-                              ),
-                              SizedBox(height: 16),
-                              TextFormField(
-                                controller: _passwordController,
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: Icon(
-                                    Icons.lock,
-                                    color: const Color.fromARGB(255, 12, 12, 12),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                ),
-                                obscureText: true,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter a password';
-                                  }
-                                  if (value.length < 8) {
-                                    return 'Password must be at least 8 characters';
+                                    return 'Please select a currency';
                                   }
                                   return null;
                                 },
@@ -178,18 +173,23 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
                               SizedBox(height: 24),
                               Center(
                                 child: ElevatedButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (_formKey.currentState!.validate()) {
-                                      // Handle wallet creation logic here
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Wallet created successfully!',
+                                      try {
+                                        await ApiService().createWallet(_selectedCurrency!);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Wallet created successfully!'),
                                           ),
-                                        ),
-                                      );
+                                        );
+                                        Navigator.push(context, CupertinoPageRoute(builder: (context) => FiatWalletScreen(),));
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error creating wallet: $e'),
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -216,9 +216,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen>
                               Center(
                                 child: TextButton(
                                   onPressed: () {
-                                    Navigator.pop(
-                                      context,
-                                    ); // Go back to previous screen
+                                    Navigator.pop(context);
                                   },
                                   child: Text(
                                     'Cancel',

@@ -1,3 +1,4 @@
+import 'package:coincraze/Constants/API.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -10,42 +11,33 @@ class AuthManager {
   AuthManager._internal();
 
   final _storage = const FlutterSecureStorage();
-  late Box _hiveBox; // Hive box for non-sensitive data
+  late Box _hiveBox;
 
-  // Personal Info
-  String? _FirstName;
-  String? _LastName;
+  // User Data
+  String? _firstName;
+  String? _lastName;
   String? _dob;
   String? _phone;
-
-  // ID Proof
   String? _country;
   String? _documentType;
   String? _frontImagePath;
   String? _backImagePath;
-
-  // Bank Details
   String? _bankName;
   String? _accountNumber;
   String? _ifsc;
-
-  // General User Info
   String? _userId;
   String? _email;
   String? _phoneNumber;
   bool? _kycCompleted;
+  String? _token; // Added for JWT token
   bool _isLoggedIn = false;
-
-  // Profile Picture
-  String? _profilePicture; // Added for profile picture path
-
-  // Non-sensitive extra data (e.g., cached settings)
+  String? _profilePicture;
   String? _lastLoginTime;
   int? _loginCount;
 
   // Getters
-  String? get FirstName => _FirstName;
-  String? get LastName => _LastName;
+  String? get firstName => _firstName;
+  String? get lastName => _lastName;
   String? get dob => _dob;
   String? get phone => _phone;
   String? get country => _country;
@@ -59,10 +51,11 @@ class AuthManager {
   String? get email => _email;
   String? get phoneNumber => _phoneNumber;
   bool? get kycCompleted => _kycCompleted;
+  String? get token => _token; // Getter for token
   bool get isLoggedIn => _isLoggedIn;
+  String? get profilePicture => _profilePicture;
   String? get lastLoginTime => _lastLoginTime;
   int? get loginCount => _loginCount;
-  String? get profilePicture => _profilePicture;
 
   // Initialize Hive
   Future<void> init() async {
@@ -71,132 +64,170 @@ class AuthManager {
     await loadSavedDetails();
   }
 
+  // Save login details from API response
   Future<void> saveLoginDetails(Map<String, dynamic> loginResponse) async {
-    final user = loginResponse['user'];
-    final kyc = user?['kyc'];
-    final personalInfo = kyc?['personalInfo'];
-    final idProof = kyc?['idProof'];
-    final bankDetails = kyc?['bankDetails'];
-
-    // Assign values with null checks
-    _FirstName = personalInfo?['FirstName']?.toString();
-    _LastName = personalInfo?['LastName']?.toString();
-    _dob = personalInfo?['dob']?.toString();
-    _phone = personalInfo?['phone']?.toString();
-    _country = idProof?['country']?.toString();
-    _documentType = idProof?['documentType']?.toString();
-    _frontImagePath = idProof?['frontImagePath']?.toString();
-    _backImagePath = idProof?['backImagePath']?.toString();
-    _bankName = bankDetails?['bankName']?.toString();
-    _accountNumber = bankDetails?['accountNumber']?.toString();
-    _ifsc = bankDetails?['ifsc']?.toString();
-    _userId = user?['_id']?.toString();
-    _email = user?['email']?.toString();
-    _phoneNumber = user?['phoneNumber']?.toString();
-    _kycCompleted = kyc?['kycCompleted'] as bool? ?? false;
-    _profilePicture = user?['profilePicture']?.toString();
-    _isLoggedIn = true;
-
-    // Save sensitive data to Secure Storage
-    await _storage.write(key: 'FirstName', value: _FirstName);
-    await _storage.write(key: 'LastName', value: _LastName);
-    await _storage.write(key: 'dob', value: _dob);
-    await _storage.write(key: 'phone', value: _phone);
-    await _storage.write(key: 'country', value: _country);
-    await _storage.write(key: 'documentType', value: _documentType);
-    await _storage.write(key: 'frontImagePath', value: _frontImagePath);
-    await _storage.write(key: 'backImagePath', value: _backImagePath);
-    await _storage.write(key: 'bankName', value: _bankName);
-    await _storage.write(key: 'accountNumber', value: _accountNumber);
-    await _storage.write(key: 'ifsc', value: _ifsc);
-    await _storage.write(key: 'userId', value: _userId);
-    await _storage.write(key: 'email', value: _email);
-    await _storage.write(key: 'phoneNumber', value: _phoneNumber);
-    await _storage.write(key: 'kycCompleted', value: _kycCompleted.toString());
-    await _storage.write(key: 'profilePicture', value: _profilePicture);
-    await _storage.write(key: 'isLoggedIn', value: _isLoggedIn.toString());
-
-    // Save non-sensitive data to Hive
-    _lastLoginTime = DateTime.now().toIso8601String();
-    _loginCount = (_hiveBox.get('loginCount') as int? ?? 0) + 1;
-    await _hiveBox.put('lastLoginTime', _lastLoginTime);
-    await _hiveBox.put('loginCount', _loginCount);
-  }
-
-  Future<void> loadSavedDetails() async {
-    // Load sensitive data from Secure Storage
-    _FirstName = await _storage.read(key: 'FirstName');
-    _LastName = await _storage.read(key: 'LastName');
-    _dob = await _storage.read(key: 'dob');
-    _phone = await _storage.read(key: 'phone');
-    _country = await _storage.read(key: 'country');
-    _documentType = await _storage.read(key: 'documentType');
-    _frontImagePath = await _storage.read(key: 'frontImagePath');
-    _backImagePath = await _storage.read(key: 'backImagePath');
-    _bankName = await _storage.read(key: 'bankName');
-    _accountNumber = await _storage.read(key: 'accountNumber');
-    _ifsc = await _storage.read(key: 'ifsc');
-    _userId = await _storage.read(key: 'userId');
-    _email = await _storage.read(key: 'email');
-    _phoneNumber = await _storage.read(key: 'phoneNumber');
-    _kycCompleted = await _storage.read(key: 'kycCompleted') == 'true';
-    _profilePicture = await _storage.read(key: 'profilePicture');
-    _isLoggedIn = await _storage.read(key: 'isLoggedIn') == 'true';
-
-    // Load non-sensitive data from Hive
-    _lastLoginTime = _hiveBox.get('lastLoginTime') as String?;
-    _loginCount = _hiveBox.get('loginCount') as int?;
-  }
-
-  Future<void> clearUserData() async {
-    await _storage.deleteAll();
-    await _hiveBox.clear();
-    _FirstName = null;
-    _LastName = null;
-    _dob = null;
-    _phone = null;
-    _country = null;
-    _documentType = null;
-    _frontImagePath = null;
-    _backImagePath = null;
-    _bankName = null;
-    _accountNumber = null;
-    _ifsc = null;
-    _userId = null;
-    _email = null;
-    _phoneNumber = null;
-    _kycCompleted = null;
-    _profilePicture = null;
-    _isLoggedIn = false;
-    _lastLoginTime = null;
-    _loginCount = null;
-  }
-
-  Future<String?> uploadProfilePicture(String userId, String filePath) async {
-    var request = http.MultipartRequest(
-      'POST',
-      Uri.parse('http://10.0.2.2:3000/upload-profile-picture'),
-    );
-    request.fields['userId'] = userId;
-    request.files.add(
-      await http.MultipartFile.fromPath('profilePicture', filePath),
-    );
     try {
+      // Validate response structure
+      if (loginResponse['user'] == null || loginResponse['token'] == null) {
+        throw Exception('Invalid login response format');
+      }
+
+      final user = loginResponse['user'] as Map<String, dynamic>;
+      final kyc = user['kyc'] as Map<String, dynamic>?;
+      final personalInfo = kyc?['personalInfo'] as Map<String, dynamic>?;
+      final idProof = kyc?['idProof'] as Map<String, dynamic>?;
+      final bankDetails = kyc?['bankDetails'] as Map<String, dynamic>?;
+
+      // Assign values
+      _firstName = personalInfo?['FirstName']?.toString();
+      _lastName = personalInfo?['LastName']?.toString();
+      _dob = personalInfo?['dob']?.toString();
+      _phone = personalInfo?['phone']?.toString();
+      _country = idProof?['country']?.toString();
+      _documentType = idProof?['documentType']?.toString();
+      _frontImagePath = idProof?['frontImagePath']?.toString();
+      _backImagePath = idProof?['backImagePath']?.toString();
+      _bankName = bankDetails?['bankName']?.toString();
+      _accountNumber = bankDetails?['accountNumber']?.toString();
+      _ifsc = bankDetails?['ifsc']?.toString();
+      _userId = user['_id']?.toString();
+      _email = user['email']?.toString();
+      _phoneNumber = user['phoneNumber']?.toString();
+      _kycCompleted = kyc?['kycCompleted'] as bool? ?? false;
+      _profilePicture = user['profilePicture']?.toString();
+      _token = loginResponse['token']?.toString();
+      _isLoggedIn = true;
+
+      // Save sensitive data to secure storage
+      await Future.wait([
+        _storage.write(key: 'firstName', value: _firstName),
+        _storage.write(key: 'lastName', value: _lastName),
+        _storage.write(key: 'dob', value: _dob),
+        _storage.write(key: 'phone', value: _phone),
+        _storage.write(key: 'country', value: _country),
+        _storage.write(key: 'documentType', value: _documentType),
+        _storage.write(key: 'frontImagePath', value: _frontImagePath),
+        _storage.write(key: 'backImagePath', value: _backImagePath),
+        _storage.write(key: 'bank Tanya', value: _bankName),
+        _storage.write(key: 'accountNumber', value: _accountNumber),
+        _storage.write(key: 'ifsc', value: _ifsc),
+        _storage.write(key: 'userId', value: _userId),
+        _storage.write(key: 'email', value: _email),
+        _storage.write(key: 'phoneNumber', value: _phoneNumber),
+        _storage.write(key: 'kycCompleted', value: _kycCompleted.toString()),
+        _storage.write(key: 'profilePicture', value: _profilePicture),
+        _storage.write(key: 'token', value: _token),
+        _storage.write(key: 'isLoggedIn', value: _isLoggedIn.toString()),
+      ]);
+
+      // Save non-sensitive data to Hive
+      _lastLoginTime = DateTime.now().toIso8601String();
+      _loginCount = (_hiveBox.get('loginCount') as int? ?? 0) + 1;
+      await _hiveBox.put('lastLoginTime', _lastLoginTime);
+      await _hiveBox.put('loginCount', _loginCount);
+    } catch (e) {
+      print('Error saving login details: $e');
+      throw e; // Rethrow to handle in calling code
+    }
+  }
+
+  // Load saved details
+  Future<void> loadSavedDetails() async {
+    try {
+      await Future.wait([
+        _storage.read(key: 'firstName').then((value) => _firstName = value),
+        _storage.read(key: 'lastName').then((value) => _lastName = value),
+        _storage.read(key: 'dob').then((value) => _dob = value),
+        _storage.read(key: 'phone').then((value) => _phone = value),
+        _storage.read(key: 'country').then((value) => _country = value),
+        _storage.read(key: 'documentType').then((value) => _documentType = value),
+        _storage.read(key: 'frontImagePath').then((value) => _frontImagePath = value),
+        _storage.read(key: 'backImagePath').then((value) => _backImagePath = value),
+        _storage.read(key: 'bankName').then((value) => _bankName = value),
+        _storage.read(key: 'accountNumber').then((value) => _accountNumber = value),
+        _storage.read(key: 'ifsc').then((value) => _ifsc = value),
+        _storage.read(key: 'userId').then((value) => _userId = value),
+        _storage.read(key: 'email').then((value) => _email = value),
+        _storage.read(key: 'phoneNumber').then((value) => _phoneNumber = value),
+        _storage.read(key: 'kycCompleted').then((value) => _kycCompleted = value == 'true'),
+        _storage.read(key: 'profilePicture').then((value) => _profilePicture = value),
+        _storage.read(key: 'token').then((value) => _token = value),
+        _storage.read(key: 'isLoggedIn').then((value) => _isLoggedIn = value == 'true'),
+      ]);
+
+      _lastLoginTime = _hiveBox.get('lastLoginTime') as String?;
+      _loginCount = _hiveBox.get('loginCount') as int?;
+    } catch (e) {
+      print('Error loading saved details: $e');
+    }
+  }
+
+  // Logout and clear data
+  Future<void> logout() async {
+    await clearUserData();
+  }
+
+  // Clear all user data
+  Future<void> clearUserData() async {
+    try {
+      await _storage.deleteAll();
+      await _hiveBox.clear();
+      _firstName = null;
+      _lastName = null;
+      _dob = null;
+      _phone = null;
+      _country = null;
+      _documentType = null;
+      _frontImagePath = null;
+      _backImagePath = null;
+      _bankName = null;
+      _accountNumber = null;
+      _ifsc = null;
+      _userId = null;
+      _email = null;
+      _phoneNumber = null;
+      _kycCompleted = null;
+      _profilePicture = null;
+      _token = null;
+      _isLoggedIn = false;
+      _lastLoginTime = null;
+      _loginCount = null;
+    } catch (e) {
+      print('Error clearing user data: $e');
+    }
+  }
+
+  // Upload profile picture
+  Future<String?> uploadProfilePicture(String userId, String filePath) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$ProductionBaseUrl/upload-profile-picture'),
+      );
+      request.fields['userId'] = userId;
+      request.files.add(await http.MultipartFile.fromPath('profilePicture', filePath));
+      request.headers['Authorization'] = 'Bearer $_token'; // Add token for authentication
+
       final response = await request.send();
-      if (response.statusCode == 200) {
-        final responseData = await http.Response.fromStream(response);
-        final jsonData = jsonDecode(responseData.body);
-        final profilePicturePath = jsonData['profilePicturePath'];
-        _profilePicture = profilePicturePath;
-        await _storage.write(key: 'profilePicture', value: profilePicturePath);
-        return profilePicturePath;
+      final responseData = await http.Response.fromStream(response);
+      final jsonData = jsonDecode(responseData.body);
+
+      if (response.statusCode == 200 && jsonData['profilePicturePath'] != null) {
+        _profilePicture = jsonData['profilePicturePath'];
+        await _storage.write(key: 'profilePicture', value: _profilePicture);
+        return _profilePicture;
       } else {
-        print('Upload failed with status: ${response.statusCode}');
+        print('Upload failed: ${jsonData['error'] ?? 'Unknown error'}');
         return null;
       }
     } catch (e) {
       print('Error uploading profile picture: $e');
       return null;
     }
+  }
+
+  // Get token for API calls
+  Future<String?> getAuthToken() async {
+    return _token ?? await _storage.read(key: 'token');
   }
 }

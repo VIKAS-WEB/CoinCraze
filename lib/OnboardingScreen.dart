@@ -16,7 +16,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
   // Define onboarding pages data
   final List<Map<String, String>> _pages = [
     {
-      'title': 'Simplify your life\nwith CryptoEasy',
+      'title': 'Simplify your life\nwith CoinCraze',
       'description': 'Spend, earn and track\nfinancial activity',
     },
     {
@@ -114,10 +114,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                SizedBox(height: 30,),
                 Image.asset(
-                  'assets/images/Logo.png',
-                  height: 300,
-                  width: 300,
+                  'assets/images/NoBgLogo.png',
+                  height: 250,
+                  width: 250,
                 ),
                 Spacer(),
                 // Card with PageView for scrolling text content

@@ -60,7 +60,7 @@ class WalletScreen extends StatelessWidget {
                           end: Alignment.bottomCenter,
                         ),
                         image: DecorationImage(
-                          image: AssetImage('assets/images/bg.jpg'),
+                          image: AssetImage('assets/images/walt.jpg'),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
                             Colors.black.withOpacity(0.1),
@@ -76,11 +76,16 @@ class WalletScreen extends StatelessWidget {
                         subtitle:
                             'If you do not have an existing wallet, create one',
                         onTap: () {
-                          Navigator.push(context, CupertinoPageRoute(builder: (context) => CreateWalletScreen(),));
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => CreateWalletScreen(),
+                            ),
+                          );
                         },
                       ),
                     ),
-                    SizedBox(height: 20,),
+                    SizedBox(height: 20),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -99,7 +104,6 @@ class WalletScreen extends StatelessWidget {
                             BlendMode.dstATop,
                           ),
                         ),
-                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: _buildOption(
                         context,

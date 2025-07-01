@@ -1,5 +1,6 @@
 import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/BottomBar.dart';
+import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/Constants/Colors.dart';
 import 'package:coincraze/HomeScreen.dart';
 import 'package:flutter/cupertino.dart';
@@ -97,7 +98,7 @@ class _NewKYCState extends State<NewKYC> {
       print('Submitting KYC with personalInfo: $personalInfo'); // Debug log
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://10.0.2.2:3000/submit-kyc'),
+        Uri.parse('$ProductionBaseUrl/submit-kyc'),
       );
 
       request.fields['userId'] = userId;

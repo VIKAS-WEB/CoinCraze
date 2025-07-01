@@ -3,6 +3,8 @@ import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/LoginScreen.dart';
 import 'package:coincraze/ProfilePage.dart';
+import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:coincraze/WalletList.dart';
 import 'package:coincraze/chartScreen.dart';
 import 'package:coincraze/deposit.dart';
 import 'package:coincraze/newKyc.dart';
@@ -102,10 +104,7 @@ class _HomescreenState extends State<Homescreen> {
               Text(
                 'Please complete your KYC to use all functionalities of the app.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
+                style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -113,9 +112,7 @@ class _HomescreenState extends State<Homescreen> {
                   Navigator.pop(context); // Close the dialog
                   Navigator.push(
                     context,
-                    CupertinoPageRoute(
-                      builder: (context) =>  NewKYC(),
-                    ),
+                    CupertinoPageRoute(builder: (context) => NewKYC()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -272,17 +269,13 @@ class _HomescreenState extends State<Homescreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to upload profile picture'),
-          ),
+          const SnackBar(content: Text('Failed to upload profile picture')),
         );
       }
     } catch (e) {
       print('Error picking/uploading image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error uploading profile picture: $e'),
-        ),
+        SnackBar(content: Text('Error uploading profile picture: $e')),
       );
     }
   }
@@ -316,18 +309,14 @@ class _HomescreenState extends State<Homescreen> {
           ),
           content: Text(
             'Are you sure you want to logout? This will clear all saved data.',
-            style: GoogleFonts.poppins(
-              color: Colors.white70,
-            ),
+            style: GoogleFonts.poppins(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context), // Close dialog
               child: Text(
                 'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                ),
+                style: GoogleFonts.poppins(color: Colors.white),
               ),
             ),
             TextButton(
@@ -349,24 +338,23 @@ class _HomescreenState extends State<Homescreen> {
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Successfully logged out', style: TextStyle(color: Colors.white, fontSize: 16),),
+                      content: Text(
+                        'Successfully logged out',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
                 } catch (e) {
                   Navigator.pop(context); // Close dialog
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error logging out: $e'),
-                    ),
+                    SnackBar(content: Text('Error logging out: $e')),
                   );
                 }
               },
               child: Text(
                 'Logout',
-                style: GoogleFonts.poppins(
-                  color: Colors.red,
-                ),
+                style: GoogleFonts.poppins(color: Colors.red),
               ),
             ),
           ],
@@ -388,7 +376,7 @@ class _HomescreenState extends State<Homescreen> {
 
   @override
   Widget build(BuildContext context) {
-    final FirstName = AuthManager().FirstName ?? 'User';
+    final FirstName = AuthManager().firstName ?? 'User';
     final email = AuthManager().email ?? 'email';
     final greeting = getGreeting();
     final profilePicture = AuthManager().profilePicture;
@@ -433,7 +421,7 @@ class _HomescreenState extends State<Homescreen> {
                               Navigator.push(
                                 context,
                                 CupertinoPageRoute(
-                                  builder: (context) =>  ProfileScreen(),
+                                  builder: (context) => ProfileScreen(),
                                 ),
                               );
                             },
@@ -441,11 +429,12 @@ class _HomescreenState extends State<Homescreen> {
                               radius: 25,
                               backgroundImage: profilePicture != null
                                   ? CachedNetworkImageProvider(
-                                      '$baseUrl/$profilePicture',
+                                      '$ProductionBaseUrl/$profilePicture',
                                     )
                                   : const AssetImage(
-                                      'assets/images/ProfileImage.jpg',
-                                    ) as ImageProvider,
+                                          'assets/images/ProfileImage.jpg',
+                                        )
+                                        as ImageProvider,
                             ),
                           ),
                           const SizedBox(width: 20.0),
@@ -457,7 +446,12 @@ class _HomescreenState extends State<Homescreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 20.0,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color.fromARGB(255, 234, 232, 232),
+                                  color: const Color.fromARGB(
+                                    255,
+                                    234,
+                                    232,
+                                    232,
+                                  ),
                                 ),
                               ),
                               Text(
@@ -495,7 +489,10 @@ class _HomescreenState extends State<Homescreen> {
                   style: GoogleFonts.poppins(color: Colors.white),
                 ),
                 onTap: () {
-                  Navigator.push(context, CupertinoPageRoute(builder: (context) => WalletScreen(),));
+                  Navigator.push(
+                    context,
+                    CupertinoPageRoute(builder: (context) => WalletScreen()),
+                  );
                   // Add navigation to wallet page
                 },
               ),
@@ -544,7 +541,7 @@ class _HomescreenState extends State<Homescreen> {
             ),
             child: IntrinsicHeight(
               child: Container(
-                decoration:  BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       Color.fromARGB(255, 2, 5, 97),
@@ -605,7 +602,9 @@ class _HomescreenState extends State<Homescreen> {
                                   isKycCompleted
                                       ? Icons.verified_user
                                       : Icons.error_outline,
-                                  color: isKycCompleted ? Colors.green : Colors.red,
+                                  color: isKycCompleted
+                                      ? Colors.green
+                                      : Colors.red,
                                 ),
                               ),
                               const SizedBox(width: 20),
@@ -620,7 +619,7 @@ class _HomescreenState extends State<Homescreen> {
                                   Navigator.push(
                                     context,
                                     CupertinoPageRoute(
-                                      builder: (context) =>  ProfileScreen(),
+                                      builder: (context) => ProfileScreen(),
                                     ),
                                   );
                                 },
@@ -628,11 +627,12 @@ class _HomescreenState extends State<Homescreen> {
                                   radius: 30,
                                   backgroundImage: profilePicture != null
                                       ? CachedNetworkImageProvider(
-                                          '$baseUrl/$profilePicture',
+                                          '$ProductionBaseUrl/$profilePicture',
                                         )
                                       : const AssetImage(
-                                          'assets/images/ProfileImage.jpg',
-                                        ) as ImageProvider,
+                                              'assets/images/ProfileImage.jpg',
+                                            )
+                                            as ImageProvider,
                                 ),
                               ),
                             ],
@@ -696,8 +696,12 @@ class _HomescreenState extends State<Homescreen> {
                               ),
                               margin: const EdgeInsets.only(right: 150),
                               decoration: BoxDecoration(
-                                color: const Color.fromARGB(255, 255, 255, 251)
-                                    .withOpacity(0.1),
+                                color: const Color.fromARGB(
+                                  255,
+                                  255,
+                                  255,
+                                  251,
+                                ).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10.0),
                                 boxShadow: [
                                   BoxShadow(
@@ -728,7 +732,9 @@ class _HomescreenState extends State<Homescreen> {
                                           text: 'envi2ze0...@Ton.network',
                                         ),
                                       );
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
                                             'Address copied to clipboard',
@@ -759,7 +765,8 @@ class _HomescreenState extends State<Homescreen> {
                                     Navigator.push(
                                       context,
                                       CupertinoPageRoute(
-                                        builder: (context) =>  ChartScreen(),
+                                        builder: (context) =>
+                                            FiatWalletScreen(),
                                       ),
                                     );
                                   },
@@ -773,47 +780,58 @@ class _HomescreenState extends State<Homescreen> {
                                     padding: const EdgeInsets.all(15),
                                   ),
                                   child: const Icon(
-                                    Icons.add,
+                                    Icons.currency_rupee_sharp,
                                     color: Colors.white,
                                     size: 25,
                                   ),
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  'Deposit',
+                                  'FIAT WALLET',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                   ),
                                 ),
                               ],
                             ),
-                            Column(
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    side: const BorderSide(
-                                      color: Colors.white,
-                                      width: 1,
+                            GestureDetector(
+                              onTap: () {},
+                              child: Column(
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        CupertinoPageRoute(
+                                          builder: (context) =>
+                                              CryptoWalletScreen(),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      side: const BorderSide(
+                                        color: Colors.white,
+                                        width: 1,
+                                      ),
+                                      shape: const CircleBorder(),
+                                      padding: const EdgeInsets.all(15),
                                     ),
-                                    shape: const CircleBorder(),
-                                    padding: const EdgeInsets.all(15),
+                                    child: const Icon(
+                                      Icons.currency_bitcoin_rounded,
+                                      color: Colors.white,
+                                      size: 25,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.remove,
-                                    color: Colors.white,
-                                    size: 25,
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Crypto Wallet',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  'Withdraw',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             Column(
                               children: [
@@ -886,12 +904,16 @@ class _HomescreenState extends State<Homescreen> {
                                     final crypto = cryptoData[index];
                                     final change = crypto['change_24h'] ?? 0.0;
                                     return Padding(
-                                      padding: const EdgeInsets.only(right: 10.0),
+                                      padding: const EdgeInsets.only(
+                                        right: 10.0,
+                                      ),
                                       child: Container(
                                         width: 230,
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
@@ -906,41 +928,53 @@ class _HomescreenState extends State<Homescreen> {
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   Padding(
-                                                    padding: const EdgeInsets.all(
-                                                        8.0),
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          8.0,
+                                                        ),
                                                     child: Image.network(
-                                                      crypto['image'] as String? ??
+                                                      crypto['image']
+                                                              as String? ??
                                                           'https://via.placeholder.com/20',
                                                       width: 45,
                                                       height: 45,
-                                                      loadingBuilder: (context,
-                                                          child,
-                                                          loadingProgress) {
-                                                        if (loadingProgress ==
-                                                            null) {
-                                                          return child;
-                                                        }
-                                                        return CircularProgressIndicator(
-                                                          value: loadingProgress
-                                                                      .expectedTotalBytes !=
-                                                                  null
-                                                              ? loadingProgress
-                                                                      .cumulativeBytesLoaded /
+                                                      loadingBuilder:
+                                                          (
+                                                            context,
+                                                            child,
+                                                            loadingProgress,
+                                                          ) {
+                                                            if (loadingProgress ==
+                                                                null) {
+                                                              return child;
+                                                            }
+                                                            return CircularProgressIndicator(
+                                                              value:
                                                                   loadingProgress
-                                                                      .expectedTotalBytes!
-                                                              : null,
-                                                        );
-                                                      },
-                                                      errorBuilder: (context,
-                                                          error, stackTrace) {
-                                                        print(
-                                                            'Image load error for ${crypto['name']}: $error');
-                                                        return Image.asset(
-                                                          'assets/images/default_coin.png',
-                                                          width: 20,
-                                                          height: 20,
-                                                        );
-                                                      },
+                                                                          .expectedTotalBytes !=
+                                                                      null
+                                                                  ? loadingProgress
+                                                                            .cumulativeBytesLoaded /
+                                                                        loadingProgress
+                                                                            .expectedTotalBytes!
+                                                                  : null,
+                                                            );
+                                                          },
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) {
+                                                            print(
+                                                              'Image load error for ${crypto['name']}: $error',
+                                                            );
+                                                            return Image.asset(
+                                                              'assets/images/default_coin.png',
+                                                              width: 20,
+                                                              height: 20,
+                                                            );
+                                                          },
                                                     ),
                                                   ),
                                                   const SizedBox(width: 5),
@@ -950,7 +984,8 @@ class _HomescreenState extends State<Homescreen> {
                                                     style: GoogleFonts.poppins(
                                                       color: Colors.white,
                                                       fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                 ],
@@ -1000,8 +1035,12 @@ class _HomescreenState extends State<Homescreen> {
                         Container(
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 36, 34, 43)
-                                .withOpacity(0.6),
+                            color: const Color.fromARGB(
+                              255,
+                              36,
+                              34,
+                              43,
+                            ).withOpacity(0.6),
                             borderRadius: BorderRadius.circular(15.0),
                           ),
                           child: Column(

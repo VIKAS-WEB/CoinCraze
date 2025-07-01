@@ -1,6 +1,7 @@
 import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/BottomBar.dart';
-
+import 'package:coincraze/Constants/API.dart';
+import 'package:coincraze/ForgotPassword.dart';
 import 'package:coincraze/SignUp.dart';
 import 'package:coincraze/newKyc.dart';
 import 'package:flutter/cupertino.dart';
@@ -95,9 +96,9 @@ class _LoginScreenState extends State<LoginScreen>
 
     // API call to backend
     try {
-      print('Sending request to http://10.0.2.2:3000/login');
+      print('Sending request to $baseUrl/api/auth/login');
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/login'),
+        Uri.parse('$baseUrl/api/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'email': email, 'password': password}),
       );
@@ -111,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (response.statusCode == 200) {
         await AuthManager().saveLoginDetails(loginResponse);
         print(
-          'User data saved: Email = ${AuthManager().email}, UserId = ${AuthManager().userId}',
+          'User data saved: Token = ${AuthManager().token}, UserId = ${AuthManager().userId}',
         ); // Save all details
 
         // Navigate to Kyc Screen
@@ -123,7 +124,8 @@ class _LoginScreenState extends State<LoginScreen>
         } else {
           Navigator.pushReplacement(
             context,
-            CupertinoPageRoute(builder: (context) => NewKYC()));
+            CupertinoPageRoute(builder: (context) => NewKYC()),
+          );
         }
       } else {
         final error = loginResponse['error'] ?? 'Login failed';
@@ -183,8 +185,8 @@ class _LoginScreenState extends State<LoginScreen>
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Image.asset(
-                        'assets/images/whiteLogo.png',
-                        width: 290,
+                        'assets/images/whtLogo.png',
+                        width: 260,
                       ),
                     ),
                   ),
@@ -283,12 +285,10 @@ class _LoginScreenState extends State<LoginScreen>
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Forgot Password feature not implemented',
-                                  ),
-                                  backgroundColor: const Color(0xFFD1493B),
+                              Navigator.push(
+                                context,
+                                CupertinoPageRoute(
+                                  builder: (context) => ForgotPassword(),
                                 ),
                               );
                             },

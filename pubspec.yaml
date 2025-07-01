@@ -12,25 +12,33 @@ environment:
 dependencies:
   bip39: ^1.0.6
   cached_network_image: ^3.4.1
+  carousel_slider: ^5.1.1
+  country_flags: ^3.3.0
   crypto: ^3.0.6
   cupertino_icons: ^1.0.8
+  ed25519_hd_key: ^2.2.0
+  encrypt: ^5.0.1
   flutter:
     sdk: flutter
   flutter_secure_storage: ^9.2.4
+  flutter_stripe: ^11.5.0
   google_fonts: ^6.2.1
+  hex: ^0.2.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  encrypt: ^5.0.1
   http: ^1.4.0
   image_picker: ^1.1.2
   intl: ^0.20.2
+  lottie: ^3.3.1
+  pinput: ^5.0.1
   provider: ^6.1.5
+  razorpay_flutter: ^1.4.0
   shared_preferences: ^2.5.3
+  shimmer: ^3.0.0
   syncfusion_flutter_charts: ^29.2.11
-  web3dart: ^2.7.0
+  url_launcher: ^6.3.1
   web_socket_channel: ^3.0.3
-  ed25519_hd_key: ^2.2.0
-  hex: ^0.2.0
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_lints: ^5.0.0
@@ -46,7 +54,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
-  #   - images/a_dot_ham.jpeg
+    - assets/lottie/
+    - assets/flags/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
   # For details regarding adding assets from package dependencies, see

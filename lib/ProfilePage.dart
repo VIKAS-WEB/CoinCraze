@@ -57,7 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profilePicture = AuthManager().profilePicture;
-    final fullName = AuthManager().FirstName ?? 'Unable to Fetch Name.';
+    final fullName = AuthManager().firstName ?? 'Unable to Fetch Name.';
     final email = AuthManager().email ?? 'Unable To Fetch Email ID.';
 
     return Scaffold(
@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     radius: 50,
                     backgroundImage: profilePicture != null
                         ? CachedNetworkImageProvider(
-                            '$baseUrl/$profilePicture',
+                            '$ProductionBaseUrl/$profilePicture',
                           )
                         : AssetImage('assets/images/ProfileImage.jpg')
                             as ImageProvider,

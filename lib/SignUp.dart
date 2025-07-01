@@ -1,3 +1,4 @@
+import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/LoginScreen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -121,7 +122,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     // API call to backend
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/signup'),
+        Uri.parse('$ProductionBaseUrl/signup'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': email,
@@ -176,12 +177,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           scrollDirection: Axis.vertical,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 60.0),
+              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 0.0),
               child: Column(
                 children: [
                   SlideTransition(
                     position: _slideAnimation,
-                    child: Image.asset('assets/images/whiteLogo.png', width: 300),
+                    child: Image.asset('assets/images/whtLogo.png', width: 240),
                   ),
                   const SizedBox(height: 0),
                   SlideTransition(
@@ -306,31 +307,8 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16.0),
-                  SlideTransition(
-                    position: _slideAnimation,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Forgot Password feature not implemented'),
-                              backgroundColor: const Color(0xFFD1493B),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Forgot Password?',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14.0,
-                            color: const Color.fromARGB(255, 0, 0, 0),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16.0),
+                  
+                  const SizedBox(height: 30.0),
                   SlideTransition(
                     position: _slideAnimation,
                     child: _isLoading

@@ -1,10 +1,17 @@
 import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/BottomBar.dart';
 import 'package:coincraze/CoinSwap.dart';
+import 'package:coincraze/ForgotPassword.dart';
 import 'package:coincraze/HomeScreen.dart';
 import 'package:coincraze/LoginScreen.dart';
 import 'package:coincraze/OnboardingScreen.dart';
+import 'package:coincraze/OtpValidationScreen.dart';
 import 'package:coincraze/ProfilePage.dart';
+import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:coincraze/SplashScreen.dart';
+import 'package:coincraze/UpdatePassword.dart';
+import 'package:coincraze/VerifyOtp.dart';
+import 'package:coincraze/WalletList.dart';
 import 'package:coincraze/demoColor.dart';
 import 'package:coincraze/kyc.dart';
 import 'package:coincraze/newKyc.dart';
@@ -34,11 +41,9 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-         textTheme: GoogleFonts.poppinsTextTheme(
-          Theme.of(context).textTheme,
-        ),
-      ),                                                                                                                                                                        
-      home: MainScreen(),
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
+      ),
+      home: OnboardingScreen(),
     );
   }
 }
