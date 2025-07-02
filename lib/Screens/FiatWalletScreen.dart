@@ -7,6 +7,7 @@ import 'package:coincraze/Screens/TransactionScreen.dart';
 import 'package:coincraze/Services/api_service.dart';
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,6 +36,10 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
     _walletsFuture = ApiService().getBalance();
     _newsFuture = _fetchNews();
   }
@@ -59,7 +64,10 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -72,19 +80,6 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
             color: Colors.white,
           ),
         ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(255, 46, 46, 47),
-                Color.fromARGB(255, 2, 5, 97),
-              ],
-            ),
-          ),
-        ),
-        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -92,135 +87,78 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 240, 240, 245),
-              Color.fromARGB(255, 200, 200, 210),
+              Color.fromARGB(255, 39, 39, 51),
+              Color.fromARGB(255, 238, 238, 238),
             ],
           ),
         ),
-        child: RefreshIndicator(
-          onRefresh: _refreshData,
-          color: Color.fromARGB(255, 46, 46, 47),
-          backgroundColor: Colors.white,
-          child: FutureBuilder<List<Wallet>>(
-            future: _walletsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildShimmerLoading();
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                );
-              }
-              final wallets = snapshot.data ?? [];
-              final availableCurrencies = wallets.map((w) => w.currency.toUpperCase()).toList();
-              if (wallets.isEmpty) {
-                return SingleChildScrollView(
-                  physics: AlwaysScrollableScrollPhysics(),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 200,
-                          height: 200,
-                          child: Lottie.asset(
-                            'assets/lottie/Empty.json',
-                            fit: BoxFit.contain,
-                            repeat: true,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No Wallets Available',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Text(
-                            'Start by creating a new wallet to manage your funds.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CreateWalletScreen(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromARGB(255, 46, 46, 47),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 5,
-                          ),
-                          child: Text(
-                            'Create Wallet',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 20),
-                    CarouselSlider.builder(
-                      itemCount: wallets.length,
-                      itemBuilder: (context, index, realIndex) {
-                        final wallet = wallets[index];
-                        return _buildWalletCard(context, wallet);
-                      },
-                      options: CarouselOptions(
-                        height: 200,
-                        enlargeCenterPage: true,
-                        autoPlay: wallets.length > 1,
-                        autoPlayInterval: Duration(seconds: 5),
-                        aspectRatio: 16 / 9,
-                        enableInfiniteScroll: wallets.length > 1,
-                        viewportFraction: 0.80,
-                        onPageChanged: (index, reason) {},
+        child: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: _refreshData,
+            color: Color.fromARGB(255, 46, 46, 47),
+            backgroundColor: Colors.white,
+            child: FutureBuilder<List<Wallet>>(
+              future: _walletsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return _buildShimmerLoading();
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.redAccent,
                       ),
                     ),
-                    SizedBox(height: 20),
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
+                  );
+                }
+                final wallets = snapshot.data ?? [];
+                final availableCurrencies = wallets.map((w) => w.currency.toUpperCase()).toList();
+                if (wallets.isEmpty) {
+                  return SizedBox.expand(
+                    child: SingleChildScrollView(
+                      physics: AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Container(
+                              width: 200,
+                              height: 200,
+                              child: Lottie.asset(
+                                'assets/lottie/Empty.json',
+                                fit: BoxFit.contain,
+                                repeat: true,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No Wallets Available',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 40),
+                              child: Text(
+                                'Start by creating a new wallet to manage your funds.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: () {
                                 Navigator.push(
@@ -242,42 +180,7 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
                                 elevation: 5,
                               ),
                               child: Text(
-                                'Add New Wallet',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final prefs = await SharedPreferences.getInstance();
-                                final userId = prefs.getString('userId') ?? '';
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => BuyCryptoScreen(
-                                      userId: userId,
-                                      availableCurrencies: availableCurrencies,
-                                    ),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color.fromARGB(255, 46, 46, 47),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 32,
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 5,
-                              ),
-                              child: Text(
-                                'Buy Crypto',
+                                'Create Wallet',
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -289,64 +192,165 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 50),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        'Trending Currency News',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                  );
+                }
+                return SingleChildScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 130),
+                      CarouselSlider.builder(
+                        itemCount: wallets.length,
+                        itemBuilder: (context, index, realIndex) {
+                          final wallet = wallets[index];
+                          return _buildWalletCard(context, wallet);
+                        },
+                        options: CarouselOptions(
+                          height: 200,
+                          enlargeCenterPage: true,
+                          autoPlay: wallets.length > 1,
+                          autoPlayInterval: Duration(seconds: 5),
+                          aspectRatio: 16 / 9,
+                          enableInfiniteScroll: wallets.length > 1,
+                          viewportFraction: 0.80,
+                          onPageChanged: (index, reason) {},
                         ),
                       ),
-                    ),
-                    SizedBox(height: 10),
-                    FutureBuilder<List<dynamic>>(
-                      future: _newsFuture,
-                      builder: (context, newsSnapshot) {
-                        if (newsSnapshot.connectionState == ConnectionState.waiting) {
-                          return _buildNewsShimmer();
-                        }
-                        if (newsSnapshot.hasError) {
-                          return Center(
-                            child: Text(
-                              'Error loading news: ${newsSnapshot.error}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.redAccent,
+                      SizedBox(height: 20),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateWalletScreen(),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromARGB(255, 46, 46, 47),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 5,
+                                ),
+                                child: Text(
+                                  'Add New Wallet',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
-                            ),
-                          );
-                        }
-                        final newsArticles = newsSnapshot.data ?? [];
-                        if (newsArticles.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No news available',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                              SizedBox(width: 10),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final prefs = await SharedPreferences.getInstance();
+                                  final userId = prefs.getString('userId') ?? '';
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => BuyCryptoScreen(
+                                  
+                                        availableCurrencies: availableCurrencies,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromARGB(255, 46, 46, 47),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 5,
+                                ),
+                                child: Text(
+                                  'Buy Crypto',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 40), // Reduced from 50 to minimize spacing
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        child: Text(
+                          'Trending Currency News',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      FutureBuilder<List<dynamic>>(
+                        future: _newsFuture,
+                        builder: (context, newsSnapshot) {
+                          if (newsSnapshot.connectionState == ConnectionState.waiting) {
+                            return _buildNewsShimmer();
+                          }
+                          if (newsSnapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error loading news: ${newsSnapshot.error}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            );
+                          }
+                          final newsArticles = newsSnapshot.data ?? [];
+                          if (newsArticles.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No news available',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero, // Ensure no default padding
+                            itemCount: newsArticles.length,
+                            itemBuilder: (context, index) {
+                              final article = newsArticles[index];
+                              return _buildNewsCard(context, article, index);
+                            },
                           );
-                        }
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: newsArticles.length,
-                          itemBuilder: (context, index) {
-                            final article = newsArticles[index];
-                            return _buildNewsCard(context, article);
-                          },
-                        );
-                      },
-                    ),
-                    SizedBox(height: 20),
-                  ],
-                ),
-              );
-            },
+                        },
+                      ),
+                      // Removed SizedBox(height: 20) to avoid extra spacing
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -359,9 +363,9 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 20),
+          SizedBox(height: 130),
           CarouselSlider.builder(
-            itemCount: 3, // Placeholder for shimmer cards
+            itemCount: 3,
             itemBuilder: (context, index, realIndex) {
               return Shimmer.fromColors(
                 baseColor: Colors.grey[300]!,
@@ -434,6 +438,7 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Shimmer.fromColors(
                     baseColor: Colors.grey[300]!,
@@ -464,7 +469,7 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
               ),
             ),
           ),
-          SizedBox(height: 50),
+          SizedBox(height: 20), // Reduced from 50
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Shimmer.fromColors(
@@ -477,7 +482,6 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
               ),
             ),
           ),
-          SizedBox(height: 10),
           _buildNewsShimmer(),
         ],
       ),
@@ -488,13 +492,18 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
     return ListView.builder(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      itemCount: 3, // Placeholder for shimmer news cards
+      itemCount: 3,
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            margin: EdgeInsets.only(
+              left: 15,
+              right: 15,
+              top: index == 0 ? 8 : 8, // Match _buildNewsCard margin
+              bottom: 8,
+            ),
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -670,7 +679,7 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
     );
   }
 
-  Widget _buildNewsCard(BuildContext context, dynamic article) {
+  Widget _buildNewsCard(BuildContext context, dynamic article, int index) {
     return GestureDetector(
       onTap: () async {
         final url = article['url']?.toString();
@@ -696,11 +705,23 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
         }
       },
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        margin: EdgeInsets.only(
+          left: 15,
+          right: 15,
+          top: index == 0 ? 4 : 8, // Reduced top margin for first item
+          bottom: 8,
+        ),
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 216, 216, 219).withOpacity(0.2),
+          color: Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(15.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,9 +764,9 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Colors.white,
                     ),
                   ),
                   SizedBox(height: 6),
@@ -753,7 +774,7 @@ class _FiatWalletScreenState extends State<FiatWalletScreen> {
                     article['source']['name'] ?? 'Unknown source',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: Colors.white70,
                     ),
                   ),
                 ],

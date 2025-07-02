@@ -2,20 +2,20 @@ import 'dart:convert';
 import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/Models/CryptoWallet.dart';
-import 'package:coincraze/Models/Transaction.dart';
+import 'package:coincraze/Models/Transactions.dart';
 import 'package:coincraze/Models/Wallet.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // Replace with your NewsAPI key (store securely in production)
-  static const String _newsApiKey = '6c41a5cc7ebe4221a238471104f4a5b5'; // Get from newsapi.org
+  static const String _newsApiKey =
+      '6c41a5cc7ebe4221a238471104f4a5b5'; // Get from newsapi.org
   static const String _baseUrl = 'https://newsapi.org/v2';
   final authToken = AuthManager().getAuthToken().toString();
-  
- 
+
   // New method for Tatum integration
-  
+
   Future<CryptoWallet> createWalletAddress(String coinName) async {
     try {
       final authToken = await AuthManager().getAuthToken();
@@ -105,37 +105,74 @@ class ApiService {
     }
   }
 
-  Future<List<CryptoWallet>> getCryptoWalletAddress() async {
-    
-  try {
-    final token = await AuthManager().getAuthToken();
-    print(token);
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/wallet/fetchCryptoWalletAddresses'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+  Future<List<CryptoWallet>> getCryptoWalletBalances() async {
+    try {
+      final token = await AuthManager().getAuthToken();
+      print('Auth Token: $token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/wallet/fetchCryptoWalletBalances'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    print('API URL: $baseUrl/api/wallet/fetchCryptoWalletAddresses');
-    print('Auth Token: $authToken');
-    print('Response Status: ${response.statusCode}');
-    print('Response Body: ${response.body}');
+      print('API URL: $baseUrl/api/wallet/fetchCryptoWalletBalances');
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
-    if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      final List<dynamic> data = jsonResponse['data'];
-      print('Parsed Data: $data');
-      return data.map((json) => CryptoWallet.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to fetch Wallet Address: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final List<dynamic> data = jsonResponse['data'];
+        print('Parsed Data: $data');
+        return data.map((json) => CryptoWallet.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception(
+          'Failed to fetch crypto wallet balances: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching crypto wallet balances: $e');
+      throw Exception('Error fetching crypto wallet balances: $e');
     }
-  } catch (e) {
-    print('Error fetching wallets: $e');
-    throw Exception('Error fetching crypto balances: $e');
   }
-}
+
+  Future<List<CryptoWallet>> getCryptoWalletAddress() async {
+    try {
+      final token = await AuthManager().getAuthToken();
+      print(token);
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/wallet/fetchCryptoWalletAddresses'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('API URL: $baseUrl/api/wallet/fetchCryptoWalletAddresses');
+      print('Auth Token: $authToken');
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final List<dynamic> data = jsonResponse['data'];
+        print('Parsed Data: $data');
+        return data.map((json) => CryptoWallet.fromJson(json)).toList();
+      } else {
+        throw Exception(
+          'Failed to fetch Wallet Address: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching wallets: $e');
+      throw Exception('Error fetching crypto balances: $e');
+    }
+  }
 
   Future<List<Wallet>> getBalance() async {
     try {
@@ -171,9 +208,10 @@ class ApiService {
     }
   }
 
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<Transactions>> getTransactions() async {
     try {
       final token = await AuthManager().getAuthToken();
+      print('Token: $token');
       final response = await http.get(
         Uri.parse('$baseUrl/api/wallet/transactions'),
         headers: {
@@ -182,13 +220,16 @@ class ApiService {
         },
       );
 
-      print('Transactions Request URL: $baseUrl/transactions');
+      print('Transactions Request URL: $baseUrl/api/wallet/transactions');
       print('Transactions Response Status: ${response.statusCode}');
       print('Transactions Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Transaction.fromJson(json)).toList();
+        final List<dynamic> data = jsonDecode(response.body);
+        // Explicitly map to List<Transactions>
+        return data
+            .map((json) => Transactions.fromJson(json))
+            .toList(growable: false);
       } else if (response.statusCode == 401) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');
@@ -368,4 +409,3 @@ class ApiService {
     }
   }
 }
-

@@ -1,4 +1,4 @@
-import 'package:coincraze/Models/Transaction.dart';
+import 'package:coincraze/Models/Transactions.dart';
 import 'package:coincraze/Services/api_service.dart';
 import 'package:flutter/material.dart';
 
@@ -11,7 +11,7 @@ class TransactionHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Transaction History')),
-      body: FutureBuilder<List<Transaction>>(
+      body: FutureBuilder<List<Transactions>>(
         future: ApiService().getTransactions(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

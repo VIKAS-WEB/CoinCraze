@@ -4,6 +4,7 @@ import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/LoginScreen.dart';
 import 'package:coincraze/ProfilePage.dart';
 import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:coincraze/Screens/Transactions.dart';
 import 'package:coincraze/WalletList.dart';
 import 'package:coincraze/chartScreen.dart';
 import 'package:coincraze/deposit.dart';
@@ -1032,70 +1033,7 @@ class _HomescreenState extends State<Homescreen> {
                               ),
                         const SizedBox(height: 20),
                         // Portfolio Section
-                        Container(
-                          padding: const EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(
-                              255,
-                              36,
-                              34,
-                              43,
-                            ).withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Transactions',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                height: 200,
-                                child: ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: transactions.length,
-                                  itemBuilder: (context, index) {
-                                    final transaction = transactions[index];
-                                    return Card(
-                                      color: Colors.white.withOpacity(0.1),
-                                      child: ListTile(
-                                        leading: const Icon(
-                                          Icons.account_balance_wallet,
-                                          color: Colors.white,
-                                        ),
-                                        title: Text(
-                                          '${transaction['type']} ${transaction['amount']} ${transaction['currency']}',
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        subtitle: Text(
-                                          transaction['date'],
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        trailing: Text(
-                                          '\$${transaction['usd']}',
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        TransactionsScreen(),
                         const SizedBox(height: 10),
                       ],
                     ),

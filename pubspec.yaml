@@ -10,6 +10,7 @@ environment:
   sdk: ^3.8.1
 
 dependencies:
+  animate_do: ^4.2.0
   bip39: ^1.0.6
   cached_network_image: ^3.4.1
   carousel_slider: ^5.1.1

@@ -1,4 +1,4 @@
-class Transaction {
+class Transactions {
   final String id;
   final String userId;
   final double amount;
@@ -8,7 +8,7 @@ class Transaction {
   final String gateway;
   final DateTime createdAt;
 
-  Transaction({
+  Transactions({
     required this.id,
     required this.userId,
     required this.amount,
@@ -19,8 +19,8 @@ class Transaction {
     required this.createdAt,
   });
 
-  factory Transaction.fromJson(Map<String, dynamic> json) {
-    return Transaction(
+  factory Transactions.fromJson(Map<String, dynamic> json) {
+    return Transactions(
       id: json['_id'],
       userId: json['userId'],
       amount: json['amount'].toDouble(),
@@ -31,4 +31,6 @@ class Transaction {
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
+
+  get walletType => null;
 }

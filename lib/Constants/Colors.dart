@@ -16,5 +16,14 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-}
 
+  /// Yeh naya primary gradient
+  static const Gradient primaryGradient = LinearGradient(
+    colors: [
+      Color.fromARGB(255, 65, 65, 68),
+      Color.fromARGB(255, 48, 39, 53),
+    ],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+}
