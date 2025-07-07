@@ -1,9 +1,11 @@
+import 'dart:async'; // Added for Timer
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:coincraze/AuthManager.dart';
 import 'package:coincraze/Constants/API.dart';
 import 'package:coincraze/LoginScreen.dart';
 import 'package:coincraze/ProfilePage.dart';
 import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:coincraze/Screens/SellCryptoScreen.dart';
 import 'package:coincraze/Screens/Transactions.dart';
 import 'package:coincraze/WalletList.dart';
 import 'package:coincraze/chartScreen.dart';
@@ -34,23 +36,8 @@ class Homescreen extends StatefulWidget {
 
 class _HomescreenState extends State<Homescreen> {
   String? email;
-  double walletBalance = 110.56;
-  List transactions = [
-    {
-      'type': 'Received',
-      'amount': 107.87,
-      'currency': 'ETH',
-      'date': '2025-06-16',
-      'usd': '2,201.37',
-    },
-    {
-      'type': 'Sent',
-      'amount': 1000.00,
-      'currency': 'USDT',
-      'date': '2025-06-15',
-      'usd': '1,000.00',
-    },
-  ];
+  double btcPrice = 0.0; // State variable for live BTC price
+  
 
   // Key to control the drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -59,6 +46,7 @@ class _HomescreenState extends State<Homescreen> {
   List<Map<String, dynamic>> cryptoData = [];
   bool isLoading = true;
   final ImagePicker _picker = ImagePicker();
+  Timer? _priceUpdateTimer; // Timer for periodic updates
 
   @override
   void initState() {
@@ -66,7 +54,17 @@ class _HomescreenState extends State<Homescreen> {
     _loadUserData();
     _fetchCryptoData();
     _checkHiveData();
-    _checkKycStatus(); // Check KYC status on init
+    _checkKycStatus();
+    // Set up timer to fetch crypto data every 30 seconds
+    _priceUpdateTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      _fetchCryptoData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _priceUpdateTimer?.cancel(); // Cancel the timer to prevent memory leaks
+    super.dispose();
   }
 
   // Check KYC status and show dialog if incomplete
@@ -94,8 +92,8 @@ class _HomescreenState extends State<Homescreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Complete Your KYC',
-                style: GoogleFonts.poppins(
+                  'Complete Your KYC',
+                  style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -173,19 +171,23 @@ class _HomescreenState extends State<Homescreen> {
     });
     try {
       final response = await http.get(
-        Uri.parse(
-          'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1',
-        ),
+        Uri.parse('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1'),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List<dynamic>;
         setState(() {
+          // Find Bitcoin in the data to update btcPrice
+          final btcData = data.firstWhere(
+             (item) => item['id'] == 'bitcoin',
+            orElse: () => {'current_price': 0.0},
+          );
+          btcPrice = btcData['current_price']?.toDouble() ?? 0.0;
+
+          // Populate cryptoData for the horizontal list
           cryptoData = List<Map<String, dynamic>>.from(
             data.map((item) {
-              final sparkline =
-                  item['sparkline_in_7d'] as Map<String, dynamic>? ?? {};
-              final prices =
-                  sparkline['price'] as List<dynamic>? ?? List.filled(20, 0.0);
+              final sparkline = item['sparkline_in_7d'] as Map<String, dynamic>? ?? {};
+              final prices = sparkline['price'] as List<dynamic>? ?? List.filled(20, 0.0);
               final normalizedPrices = _generateZigzagPrices(
                 prices,
                 item['price_change_percentage_24h'] ?? 0.0,
@@ -333,8 +335,7 @@ class _HomescreenState extends State<Homescreen> {
                   Navigator.pushReplacement(
                     context,
                     CupertinoPageRoute(
-                      builder: (context) =>
-                          const LoginScreen(), // Replace with your login screen
+                      builder: (context) => const LoginScreen(),
                     ),
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -432,10 +433,8 @@ class _HomescreenState extends State<Homescreen> {
                                   ? CachedNetworkImageProvider(
                                       '$ProductionBaseUrl/$profilePicture',
                                     )
-                                  : const AssetImage(
-                                          'assets/images/ProfileImage.jpg',
-                                        )
-                                        as ImageProvider,
+                                  : const AssetImage('assets/images/ProfileImage.jpg')
+                                      as ImageProvider,
                             ),
                           ),
                           const SizedBox(width: 20.0),
@@ -447,12 +446,7 @@ class _HomescreenState extends State<Homescreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 20.0,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    234,
-                                    232,
-                                    232,
-                                  ),
+                                  color: const Color.fromARGB(255, 234, 232, 232),
                                 ),
                               ),
                               Text(
@@ -481,10 +475,7 @@ class _HomescreenState extends State<Homescreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.account_balance_wallet,
-                  color: Colors.white,
-                ),
+                leading: const Icon(Icons.account_balance_wallet, color: Colors.white),
                 title: Text(
                   'Wallet',
                   style: GoogleFonts.poppins(color: Colors.white),
@@ -494,7 +485,6 @@ class _HomescreenState extends State<Homescreen> {
                     context,
                     CupertinoPageRoute(builder: (context) => WalletScreen()),
                   );
-                  // Add navigation to wallet page
                 },
               ),
               ListTile(
@@ -505,7 +495,6 @@ class _HomescreenState extends State<Homescreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  // Add navigation to transaction history page
                 },
               ),
               ListTile(
@@ -516,7 +505,6 @@ class _HomescreenState extends State<Homescreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  // Add navigation to settings page
                 },
               ),
               ListTile(
@@ -525,7 +513,7 @@ class _HomescreenState extends State<Homescreen> {
                   'Logout',
                   style: GoogleFonts.poppins(color: Colors.white),
                 ),
-                onTap: _handleLogout, // Trigger logout
+                onTap: _handleLogout,
               ),
             ],
           ),
@@ -603,9 +591,7 @@ class _HomescreenState extends State<Homescreen> {
                                   isKycCompleted
                                       ? Icons.verified_user
                                       : Icons.error_outline,
-                                  color: isKycCompleted
-                                      ? Colors.green
-                                      : Colors.red,
+                                  color: isKycCompleted ? Colors.green : Colors.red,
                                 ),
                               ),
                               const SizedBox(width: 20),
@@ -630,10 +616,8 @@ class _HomescreenState extends State<Homescreen> {
                                       ? CachedNetworkImageProvider(
                                           '$ProductionBaseUrl/$profilePicture',
                                         )
-                                      : const AssetImage(
-                                              'assets/images/ProfileImage.jpg',
-                                            )
-                                            as ImageProvider,
+                                      : const AssetImage('assets/images/ProfileImage.jpg')
+                                          as ImageProvider,
                                 ),
                               ),
                             ],
@@ -673,7 +657,7 @@ class _HomescreenState extends State<Homescreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Current Value',
+                              'Current BTC Value',
                               style: GoogleFonts.poppins(
                                 fontSize: 14.0,
                                 fontWeight: FontWeight.bold,
@@ -681,13 +665,25 @@ class _HomescreenState extends State<Homescreen> {
                               ),
                             ),
                             const SizedBox(height: 8.0),
-                            Text(
-                              '\$$walletBalance',
-                              style: GoogleFonts.poppins(
-                                fontSize: 36.0,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  isLoading ? 'Loading...' : '\$${btcPrice.toStringAsFixed(2)}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 36.0,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (isLoading) ...[
+                                  const SizedBox(width: 10),
+                                  const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 8.0),
                             Container(
@@ -697,12 +693,7 @@ class _HomescreenState extends State<Homescreen> {
                               ),
                               margin: const EdgeInsets.only(right: 150),
                               decoration: BoxDecoration(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  251,
-                                ).withOpacity(0.1),
+                                color: const Color.fromARGB(255, 255, 255, 251).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10.0),
                                 boxShadow: [
                                   BoxShadow(
@@ -733,13 +724,9 @@ class _HomescreenState extends State<Homescreen> {
                                           text: 'envi2ze0...@Ton.network',
                                         ),
                                       );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                            'Address copied to clipboard',
-                                          ),
+                                          content: Text('Address copied to clipboard'),
                                         ),
                                       );
                                     },
@@ -766,17 +753,13 @@ class _HomescreenState extends State<Homescreen> {
                                     Navigator.push(
                                       context,
                                       CupertinoPageRoute(
-                                        builder: (context) =>
-                                            FiatWalletScreen(),
+                                        builder: (context) => FiatWalletScreen(),
                                       ),
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
-                                    side: const BorderSide(
-                                      color: Colors.white,
-                                      width: 1,
-                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1),
                                     shape: const CircleBorder(),
                                     padding: const EdgeInsets.all(15),
                                   ),
@@ -789,9 +772,7 @@ class _HomescreenState extends State<Homescreen> {
                                 const SizedBox(height: 5),
                                 Text(
                                   'FIAT WALLET',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                  ),
+                                  style: GoogleFonts.poppins(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -804,17 +785,13 @@ class _HomescreenState extends State<Homescreen> {
                                       Navigator.push(
                                         context,
                                         CupertinoPageRoute(
-                                          builder: (context) =>
-                                              CryptoWalletScreen(),
+                                          builder: (context) => CryptoWalletScreen(),
                                         ),
                                       );
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.transparent,
-                                      side: const BorderSide(
-                                        color: Colors.white,
-                                        width: 1,
-                                      ),
+                                      side: const BorderSide(color: Colors.white, width: 1),
                                       shape: const CircleBorder(),
                                       padding: const EdgeInsets.all(15),
                                     ),
@@ -827,9 +804,7 @@ class _HomescreenState extends State<Homescreen> {
                                   const SizedBox(height: 5),
                                   Text(
                                     'Crypto Wallet',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                    ),
+                                    style: GoogleFonts.poppins(color: Colors.white),
                                   ),
                                 ],
                               ),
@@ -837,28 +812,25 @@ class _HomescreenState extends State<Homescreen> {
                             Column(
                               children: [
                                 ElevatedButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    Navigator.push(context, CupertinoPageRoute(builder: (context) => CryptoSellScreen(),));
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
-                                    side: const BorderSide(
-                                      color: Colors.white,
-                                      width: 1,
-                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1),
                                     shape: const CircleBorder(),
                                     padding: const EdgeInsets.all(15),
                                   ),
                                   child: const Icon(
-                                    Icons.scanner_rounded,
+                                    Icons.currency_bitcoin_rounded,
                                     color: Colors.white,
                                     size: 25,
                                   ),
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  'Scan',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                  ),
+                                  'Sell Crypto',
+                                  style: GoogleFonts.poppins(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -868,10 +840,7 @@ class _HomescreenState extends State<Homescreen> {
                                   onPressed: () {},
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
-                                    side: const BorderSide(
-                                      color: Colors.white,
-                                      width: 1,
-                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 1),
                                     shape: const CircleBorder(),
                                     padding: const EdgeInsets.all(15),
                                   ),
@@ -884,9 +853,7 @@ class _HomescreenState extends State<Homescreen> {
                                 const SizedBox(height: 5),
                                 Text(
                                   'Connect',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                  ),
+                                  style: GoogleFonts.poppins(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -905,95 +872,66 @@ class _HomescreenState extends State<Homescreen> {
                                     final crypto = cryptoData[index];
                                     final change = crypto['change_24h'] ?? 0.0;
                                     return Padding(
-                                      padding: const EdgeInsets.only(
-                                        right: 10.0,
-                                      ),
+                                      padding: const EdgeInsets.only(right: 10.0),
                                       child: Container(
                                         width: 230,
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10.0,
-                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
                                           child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
+                                                mainAxisAlignment: MainAxisAlignment.center,
                                                 children: [
                                                   Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          8.0,
-                                                        ),
+                                                    padding: const EdgeInsets.all(8.0),
                                                     child: Image.network(
-                                                      crypto['image']
-                                                              as String? ??
+                                                      crypto['image'] as String? ??
                                                           'https://via.placeholder.com/20',
                                                       width: 45,
                                                       height: 45,
-                                                      loadingBuilder:
-                                                          (
-                                                            context,
-                                                            child,
-                                                            loadingProgress,
-                                                          ) {
-                                                            if (loadingProgress ==
-                                                                null) {
-                                                              return child;
-                                                            }
-                                                            return CircularProgressIndicator(
-                                                              value:
-                                                                  loadingProgress
-                                                                          .expectedTotalBytes !=
-                                                                      null
-                                                                  ? loadingProgress
-                                                                            .cumulativeBytesLoaded /
-                                                                        loadingProgress
-                                                                            .expectedTotalBytes!
-                                                                  : null,
-                                                            );
-                                                          },
-                                                      errorBuilder:
-                                                          (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) {
-                                                            print(
-                                                              'Image load error for ${crypto['name']}: $error',
-                                                            );
-                                                            return Image.asset(
-                                                              'assets/images/default_coin.png',
-                                                              width: 20,
-                                                              height: 20,
-                                                            );
-                                                          },
+                                                      loadingBuilder: (
+                                                        context,
+                                                        child,
+                                                        loadingProgress,
+                                                      ) {
+                                                        if (loadingProgress == null) {
+                                                          return child;
+                                                        }
+                                                        return CircularProgressIndicator(
+                                                          value: loadingProgress.expectedTotalBytes != null
+                                                              ? loadingProgress.cumulativeBytesLoaded /
+                                                                  loadingProgress.expectedTotalBytes!
+                                                              : null,
+                                                        );
+                                                      },
+                                                      errorBuilder: (context, error, stackTrace) {
+                                                        print('Image load error for ${crypto['name']}: $error');
+                                                        return Image.asset(
+                                                          'assets/images/default_coin.png',
+                                                          width: 20,
+                                                          height: 20,
+                                                        );
+                                                      },
                                                     ),
                                                   ),
                                                   const SizedBox(width: 5),
                                                   Text(
-                                                    crypto['name'] as String? ??
-                                                        'Unknown',
+                                                    crypto['name'] as String? ?? 'Unknown',
                                                     style: GoogleFonts.poppins(
                                                       color: Colors.white,
                                                       fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.bold,
+                                                      fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                               Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
+                                                mainAxisAlignment: MainAxisAlignment.center,
                                                 children: [
                                                   Text(
                                                     '\$${crypto['price'].toStringAsFixed(2)}',
@@ -1005,20 +943,14 @@ class _HomescreenState extends State<Homescreen> {
                                                   Text(
                                                     '${change >= 0 ? '+' : ''}${change.toStringAsFixed(2)}%',
                                                     style: GoogleFonts.poppins(
-                                                      color: change >= 0
-                                                          ? Colors.green
-                                                          : Colors.red,
+                                                      color: change >= 0 ? Colors.green : Colors.red,
                                                       fontSize: 12,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Icon(
-                                                    change >= 0
-                                                        ? Icons.arrow_upward
-                                                        : Icons.arrow_downward,
-                                                    color: change >= 0
-                                                        ? Colors.green
-                                                        : Colors.red,
+                                                    change >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                                                    color: change >= 0 ? Colors.green : Colors.red,
                                                     size: 20,
                                                   ),
                                                 ],
@@ -1057,5 +989,3 @@ class CandleData {
 
   CandleData(this.time, this.open, this.high, this.low, this.close);
 }
-
-// Placeholder LoginScreen (replace with your actual login screen)

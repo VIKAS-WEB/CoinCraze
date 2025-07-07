@@ -1,3 +1,5 @@
+import 'package:coincraze/LoginScreen.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -40,7 +42,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
       if (e.toString().contains('Session expired')) {
         // Redirect to login screen
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacement(context, CupertinoPageRoute(builder: (context) => LoginScreen(),));
       }
     }
   }
@@ -162,8 +164,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           ),
                         )
                       : ListView.builder(
+                        // scrollDirection: Axis.vertical,
                           shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
+                          
                           itemCount: transactions.length,
                           itemBuilder: (context, index) {
                             final transaction = transactions[index];

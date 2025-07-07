@@ -8,6 +8,7 @@ import 'package:coincraze/OnboardingScreen.dart';
 import 'package:coincraze/OtpValidationScreen.dart';
 import 'package:coincraze/ProfilePage.dart';
 import 'package:coincraze/Screens/FiatWalletScreen.dart';
+import 'package:coincraze/Screens/SellCryptoScreen.dart';
 import 'package:coincraze/SplashScreen.dart';
 import 'package:coincraze/UpdatePassword.dart';
 import 'package:coincraze/VerifyOtp.dart';

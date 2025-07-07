@@ -408,4 +408,113 @@ class ApiService {
       throw Exception('Error fetching news: $e');
     }
   }
+
+  // New method to sell crypto and update fiat wallet
+  Future<void> sellCryptoToFiat({
+    required String cryptoCurrency,
+    required String fiatCurrency,
+    required double cryptoAmount,
+    required double fiatAmount,
+    required String cryptoWalletId,
+    required String fiatWalletId,
+  }) async {
+    try {
+      final token = await AuthManager().getAuthToken();
+      print('Sell Crypto Token: $token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/wallet/sellCrypto'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'cryptoWalletId': cryptoWalletId,
+          'fiatWalletId': fiatWalletId,
+          'cryptoAmount': cryptoAmount,
+          'fiatAmount': fiatAmount,
+          'cryptoCurrency': cryptoCurrency,
+        }),
+      );
+
+      print('Sell Crypto Response Status: ${response.statusCode}');
+      print('Sell Crypto Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Failed to sell crypto: ${response.body}');
+      }
+    } catch (e) {
+      print('Sell Crypto Error: $e');
+      throw Exception('Error selling crypto: $e');
+    }
+  }
+
+  Future<List<CryptoWallet>> getCompleteCryptoDetails() async {
+    try {
+      final token = await AuthManager().getAuthToken();
+      final userId = await AuthManager().userId;
+
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      final url = Uri.parse(
+        '$baseUrl/api/wallet/fetchCompleteCryptoDetails?userId=$userId',
+      );
+
+      print('🔐 Token: $token');
+      print('🧑‍💻 User ID: $userId');
+      print('🌐 Request URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('📦 Status Code: ${response.statusCode}');
+      print('📨 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final List<dynamic> data = jsonResponse['data'];
+        return data.map((json) => CryptoWallet.fromJson(json)).toList();
+      } else {
+        throw Exception(
+          'Failed to fetch Wallet Address: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('❌ Error fetching wallets: $e');
+      throw Exception('Error fetching crypto balances: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSupportedAssets() async {
+    final Token = await AuthManager().getAuthToken();
+    final url = Uri.parse('$baseUrl/api/wallet/getSupportedAssets');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $Token'},
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final List<dynamic> rawAssets =
+          json['data']; // 👈 yahan 'data' se list nikaali
+      return rawAssets
+          .cast<
+            Map<String, dynamic>
+          >(); // 👈 convert to List<Map<String, dynamic>>
+    } else {
+      throw Exception('Failed to load supported assets');
+    }
+  }
 }

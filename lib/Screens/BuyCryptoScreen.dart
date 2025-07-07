@@ -8,6 +8,7 @@ import 'package:coincraze/Models/CryptoWallet.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:http/http.dart' as http;
 import 'package:coincraze/Constants/API.dart';
+import 'package:flutter/services.dart';
 
 class BuyCryptoScreen extends StatefulWidget {
   const BuyCryptoScreen({required this.availableCurrencies, super.key});
@@ -20,7 +21,7 @@ class BuyCryptoScreen extends StatefulWidget {
 
 class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   final _amountController = TextEditingController();
-  String _selectedCrypto = 'ETH'; // Default to ETH to match ETH_TEST
+  String? _selectedCrypto; // Initially null until wallets are fetched
   String _selectedFiat = 'USD';
   String? _selectedWalletAddress;
   double _cryptoAmount = 0.0;
@@ -28,14 +29,20 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   double _fee = 0.0;
   bool _isLoading = false;
   List<WalletData> _userWallets = [];
+  List<String> _cryptos = []; // Dynamic list from DB
 
-  final List<String> _cryptos = ['BTC', 'ETH', 'USDT', 'ETH_TEST'];
-
-  final Map<String, String> _cryptoFullNames = {
-    'BTC': 'Bitcoin',
-    'ETH': 'Ethereum',
-    'USDT': 'Tether',
-    'ETH_TEST': 'Ethereum (Testnet)',
+  // Map to handle testnet coins (maps API coinName to mainnet coin for display)
+  final Map<String, String> coinNameToMainnet = {
+    'ETC_TEST': 'Ethereum Classic',
+    'LTC_TEST': 'Litecoin',
+    'BTC_TEST': 'Bitcoin',
+    'DOGE_TEST': 'Dogecoin',
+    'EOS_TEST': 'EOS',  
+    'ADA_TEST': 'Cardano',
+    'DASH_TEST': 'Dash',
+    'CELESTIA_TEST': 'Celestia',
+    'HBAR_TEST': 'Hedera Hashgraph',
+    'TRX_TEST': 'TRON',
   };
 
   // Enhanced theme colors with gradients
@@ -43,7 +50,10 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   final Color _accentColor = const Color.fromARGB(255, 211, 224, 225);
   final Color _backgroundColor = const Color(0xFFECEFF1);
   final LinearGradient _buttonGradient = const LinearGradient(
-    colors: [Color.fromARGB(255, 13, 13, 13), Color.fromARGB(255, 92, 117, 130)],
+    colors: [
+      Color.fromARGB(255, 13, 13, 13),
+      Color.fromARGB(255, 92, 117, 130),
+    ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -58,7 +68,9 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
     super.initState();
     _selectedFiat = widget.availableCurrencies.contains('USD')
         ? 'USD'
-        : (widget.availableCurrencies.isNotEmpty ? widget.availableCurrencies[0] : 'USD');
+        : (widget.availableCurrencies.isNotEmpty
+              ? widget.availableCurrencies[0]
+              : 'USD');
     _fetchExchangeRate();
     _amountController.addListener(_calculateCryptoAmount);
     _fetchUserWallets();
@@ -67,26 +79,75 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   Future<void> _fetchUserWallets() async {
     setState(() => _isLoading = true);
     try {
-      final wallets = await ApiService().getCryptoWalletAddress();
+      // Ensure user is authenticated
+      final authManager = AuthManager();
+      if (!authManager.isLoggedIn || authManager.userId == null) {
+        throw Exception('User not authenticated. Please log in.');
+      }
+      final token = await authManager.getAuthToken();
+      print('Fetching wallets with token: $token');
+
+      // Fetch wallets from API
+      final wallets = await ApiService().getCompleteCryptoDetails();
+      print('Fetched Wallets: $wallets (Count: ${wallets.length})');
+      if (wallets.isEmpty) {
+        print('No wallets returned from API');
+      } else {
+        wallets.forEach((wallet) {
+          print(
+            'Wallet: currency=${wallet.currency}, address=${wallet.address}, createdAt=${wallet.createdAt}',
+          );
+        });
+      }
+
       setState(() {
+        // Map wallets to WalletData
         _userWallets = wallets
-            .map((wallet) => WalletData(
-                  coinName: wallet.currency,
-                  walletAddress: wallet.address ?? '',
-                  createdAt: wallet.createdAt ?? DateTime.now(),
-                ))
+            .map(
+              (wallet) => WalletData(
+                coinName: wallet.currency ?? 'Unknown',
+                walletAddress: wallet.address ?? '',
+                createdAt: wallet.createdAt ?? DateTime.now(),
+              ),
+            )
             .toList();
-        if (_userWallets.isNotEmpty) {
-          final matchingWallets =
-              _userWallets.where((w) => w.coinName == _selectedCrypto || (w.coinName == 'ETH_TEST' && _selectedCrypto == 'ETH')).toList();
-          _selectedWalletAddress = matchingWallets.isNotEmpty ? matchingWallets.first.walletAddress : _userWallets.first.walletAddress;
+
+        // Populate _cryptos with unique currencies from DB
+        _cryptos = _userWallets
+            .map((wallet) => wallet.coinName)
+            .toSet()
+            .toList(); // Remove duplicates
+        print('Available cryptocurrencies: $_cryptos');
+
+        // Set default selected crypto
+        if (_cryptos.isNotEmpty) {
+          _selectedCrypto = _cryptos.first;
+        } else {
+          _selectedCrypto = null;
+        }
+
+        // Select wallet address for the current _selectedCrypto
+        if (_userWallets.isNotEmpty && _selectedCrypto != null) {
+          final matchingWallets = _userWallets
+              .where((w) => w.coinName == _selectedCrypto)
+              .toList();
+          _selectedWalletAddress = matchingWallets.isNotEmpty
+              ? matchingWallets.first.walletAddress
+              : _userWallets.first.walletAddress;
         } else {
           _selectedWalletAddress = null;
         }
       });
     } catch (e) {
+      print('Fetch Wallets Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching wallets: $e')),
+        SnackBar(
+          content: Text(
+            e.toString().contains('401')
+                ? 'Authentication failed. Please log in again.'
+                : 'Error fetching wallet details: $e',
+          ),
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -94,21 +155,48 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   }
 
   Future<void> _createWallet() async {
+    if (_selectedCrypto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a cryptocurrency')),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     try {
-      final newWallet = await ApiService().createWalletAddress(_selectedCrypto);
-      setState(() {
-        _userWallets.add(WalletData(
-          coinName: newWallet.currency,
-          walletAddress: newWallet.address ?? '',
-          createdAt: newWallet.createdAt ?? DateTime.now(),
-        ));
-        _selectedWalletAddress = newWallet.address;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating wallet: $e')),
+      final newWallet = await ApiService().createWalletAddress(
+        _selectedCrypto!,
       );
+      print(
+        'New Wallet: currency=${newWallet.currency}, address=${newWallet.address}',
+      );
+      setState(() {
+        _userWallets.add(
+          WalletData(
+            coinName: newWallet.currency ?? 'Unknown',
+            walletAddress: newWallet.address ?? '',
+            createdAt: newWallet.createdAt ?? DateTime.now(),
+          ),
+        );
+        _selectedWalletAddress = newWallet.address;
+        // Update _cryptos if new coin is created
+        if (!_cryptos.contains(newWallet.currency)) {
+          _cryptos.add(newWallet.currency ?? 'Unknown');
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Wallet address created successfully for ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto}',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Create Wallet Error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error creating wallet: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -116,7 +204,7 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
 
   Future<void> _fetchExchangeRate() async {
     final amount = double.tryParse(_amountController.text) ?? 0.0;
-    if (amount <= 0) {
+    if (amount <= 0 || _selectedCrypto == null) {
       setState(() {
         _exchangeRate = 0.0;
         _cryptoAmount = 0.0;
@@ -126,8 +214,11 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
     }
     setState(() => _isLoading = true);
     try {
-      final cryptoFullName = _cryptoFullNames[_selectedCrypto] ?? _selectedCrypto;
-      final rates = await ApiService().fetchCryptoExchangeRates(cryptoFullName, _selectedFiat, amount);
+      final rates = await ApiService().fetchCryptoExchangeRates(
+        coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto!,
+        _selectedFiat,
+        amount,
+      );
       setState(() {
         _exchangeRate = rates[_selectedFiat.toLowerCase()] ?? 0.0;
         if (_exchangeRate <= 0) {
@@ -152,28 +243,45 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
     final fiatAmount = double.tryParse(_amountController.text) ?? 0.0;
     setState(() {
       _fee = fiatAmount * 0.015;
-      _cryptoAmount = _exchangeRate > 0 ? (fiatAmount - _fee) / _exchangeRate : 0.0;
+      _cryptoAmount = _exchangeRate > 0
+          ? (fiatAmount - _fee) / _exchangeRate
+          : 0.0;
     });
   }
 
-  bool _validateWalletAddress(String? address) {
-    if (address == null || address.isEmpty) return false;
-    switch (_selectedCrypto) {
-      case 'BTC':
-        return address.startsWith('1') || address.startsWith('3') || address.startsWith('bc1');
-      case 'ETH':
-      case 'ETH_TEST':
-        return address.startsWith('0x') && address.length == 42;
-      case 'USDT':
-        return address.startsWith('0x') && address.length == 42;
-      default:
-        return true;
+  bool _validateWalletAddress(String? address, String? crypto) {
+    return address != null && address.isNotEmpty;
+  }
+
+  void _copyAddress(String? address) {
+    if (address == null || address.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "No address available to copy",
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
+    Clipboard.setData(ClipboardData(text: address));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Address copied to clipboard",
+          style: GoogleFonts.poppins(),
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<void> _confirmTransaction() async {
     final fiatAmount = double.tryParse(_amountController.text) ?? 0.0;
     final walletAddress = _selectedWalletAddress;
+    print('Selected Wallet Address: $walletAddress');
 
     if (fiatAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,7 +289,8 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
       );
       return;
     }
-    if (walletAddress == null || !_validateWalletAddress(walletAddress)) {
+    if (walletAddress == null ||
+        !_validateWalletAddress(walletAddress, _selectedCrypto)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a valid wallet address')),
       );
@@ -189,18 +298,25 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
     }
 
     final authManager = AuthManager();
-    if (!authManager.isLoggedIn || authManager.userId == null || authManager.kycCompleted != true) {
+    if (!authManager.isLoggedIn ||
+        authManager.userId == null ||
+        authManager.kycCompleted != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('KYC verification required to perform transactions')),
+        const SnackBar(
+          content: Text('KYC verification required to perform transactions'),
+        ),
       );
       return;
     }
 
     final selectedWallet = _userWallets.firstWhere(
       (w) => w.walletAddress == walletAddress,
-      orElse: () => WalletData(coinName: _selectedCrypto, walletAddress: walletAddress, createdAt: DateTime.now()),
+      orElse: () => WalletData(
+        coinName: _selectedCrypto ?? 'Unknown',
+        walletAddress: walletAddress,
+        createdAt: DateTime.now(),
+      ),
     );
-    final backendCurrency = _selectedCrypto == 'ETH' && selectedWallet.coinName == 'ETH_TEST' ? 'ETH_TEST' : _selectedCrypto;
 
     setState(() => _isLoading = true);
     try {
@@ -213,7 +329,7 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
         },
         body: jsonEncode({
           'userId': authManager.userId,
-          'currency': backendCurrency,
+          'currency': selectedWallet.coinName,
           'address': walletAddress,
           'amount': _cryptoAmount,
         }),
@@ -226,7 +342,9 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             backgroundColor: Colors.transparent,
             content: Container(
               decoration: BoxDecoration(
@@ -249,11 +367,19 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
                     ),
                     const SizedBox(height: 16),
                     _buildDialogText('Fiat Amount: $_selectedFiat $fiatAmount'),
-                    _buildDialogText('Crypto Received: ${_cryptoAmount.toStringAsFixed(8)} $_selectedCrypto'),
-                    _buildDialogText('Fee: $_selectedFiat ${_fee.toStringAsFixed(2)}'),
-                    _buildDialogText('Exchange Rate: 1 $_selectedCrypto = $_selectedFiat ${_exchangeRate.toStringAsFixed(2)}'),
+                    _buildDialogText(
+                      'Crypto Received: ${_cryptoAmount.toStringAsFixed(8)} ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto}',
+                    ),
+                    _buildDialogText(
+                      'Fee: $_selectedFiat ${_fee.toStringAsFixed(2)}',
+                    ),
+                    _buildDialogText(
+                      'Exchange Rate: 1 ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto} = $_selectedFiat ${_exchangeRate.toStringAsFixed(2)}',
+                    ),
                     _buildDialogText('Wallet Address: $walletAddress'),
-                    _buildDialogText('New Balance: ${updatedWallet.balance.toStringAsFixed(8)} $_selectedCrypto'),
+                    _buildDialogText(
+                      'New Balance: ${updatedWallet.balance.toStringAsFixed(8)} ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto}',
+                    ),
                     _buildDialogText('Date: ${DateTime.now().toString()}'),
                     const SizedBox(height: 20),
                     Align(
@@ -261,7 +387,10 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             gradient: _buttonGradient,
                             borderRadius: BorderRadius.circular(12),
@@ -293,12 +422,14 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
         await _fetchUserWallets();
       } else {
         final errorData = jsonDecode(response.body);
-        throw Exception('Failed to update wallet: ${errorData['message'] ?? response.body}');
+        throw Exception(
+          'Failed to update wallet: ${errorData['message'] ?? response.body}',
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Transaction failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Transaction failed: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -364,7 +495,7 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
                 const SizedBox(height: 24),
                 _buildSectionTitle('Wallet Address'),
                 const SizedBox(height: 12),
-                _userWallets.where((w) => w.coinName == _selectedCrypto || (w.coinName == 'ETH_TEST' && _selectedCrypto == 'ETH')).isEmpty
+                _userWallets.where((w) => w.coinName == _selectedCrypto).isEmpty
                     ? _buildCreateWalletButton()
                     : _buildWalletAddressDropdown(),
                 const SizedBox(height: 24),
@@ -372,7 +503,9 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
                 const SizedBox(height: 12),
                 _buildAmountInput(),
                 const SizedBox(height: 28),
-                _isLoading ? _buildLoadingIndicator() : _buildTransactionDetails(),
+                _isLoading
+                    ? _buildLoadingIndicator()
+                    : _buildTransactionDetails(),
                 const SizedBox(height: 32),
                 _buildConfirmButton(),
               ],
@@ -414,27 +547,43 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
           isExpanded: true,
           icon: Icon(Icons.arrow_drop_down, color: _accentColor),
           dropdownColor: _primaryColor,
+          hint: Text(
+            _cryptos.isEmpty
+                ? 'No cryptocurrencies available'
+                : 'Select cryptocurrency',
+            style: GoogleFonts.poppins(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 16,
+            ),
+          ),
           items: _cryptos
-              .map((crypto) => DropdownMenuItem(
-                    value: crypto,
-                    child: Text(
-                      _cryptoFullNames[crypto] ?? crypto,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+              .map(
+                (crypto) => DropdownMenuItem(
+                  value: crypto,
+                  child: Text(
+                    coinNameToMainnet[crypto] ?? crypto,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
                     ),
-                  ))
+                  ),
+                ),
+              )
               .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCrypto = value!;
-              final matchingWallets =
-                  _userWallets.where((w) => w.coinName == _selectedCrypto || (w.coinName == 'ETH_TEST' && _selectedCrypto == 'ETH')).toList();
-              _selectedWalletAddress = matchingWallets.isNotEmpty ? matchingWallets.first.walletAddress : null;
-              _fetchExchangeRate();
-            });
-          },
+          onChanged: _cryptos.isEmpty
+              ? null
+              : (value) {
+                  setState(() {
+                    _selectedCrypto = value!;
+                    final matchingWallets = _userWallets
+                        .where((w) => w.coinName == _selectedCrypto)
+                        .toList();
+                    _selectedWalletAddress = matchingWallets.isNotEmpty
+                        ? matchingWallets.first.walletAddress
+                        : null;
+                    _fetchExchangeRate();
+                  });
+                },
         ),
       ),
     );
@@ -461,16 +610,18 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
           icon: Icon(Icons.arrow_drop_down, color: _accentColor),
           dropdownColor: _primaryColor,
           items: widget.availableCurrencies
-              .map((currency) => DropdownMenuItem(
-                    value: currency,
-                    child: Text(
-                      currency,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+              .map(
+                (currency) => DropdownMenuItem(
+                  value: currency,
+                  child: Text(
+                    currency,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
                     ),
-                  ))
+                  ),
+                ),
+              )
               .toList(),
           onChanged: (value) {
             setState(() {
@@ -484,7 +635,9 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   }
 
   Widget _buildWalletAddressDropdown() {
-    final availableWallets = _userWallets.where((w) => w.coinName == _selectedCrypto || (w.coinName == 'ETH_TEST' && _selectedCrypto == 'ETH')).toList();
+    final availableWallets = _userWallets
+        .where((w) => w.coinName == _selectedCrypto)
+        .toList();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -505,24 +658,46 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
           icon: Icon(Icons.arrow_drop_down, color: _accentColor),
           dropdownColor: _primaryColor,
           hint: Text(
-            availableWallets.isEmpty ? 'No wallets available' : 'Select wallet address',
+            availableWallets.isEmpty
+                ? 'No wallets available'
+                : 'Select wallet address',
             style: GoogleFonts.poppins(
               color: Colors.white.withOpacity(0.7),
               fontSize: 16,
             ),
           ),
           items: availableWallets
-              .map((wallet) => DropdownMenuItem(
-                    value: wallet.walletAddress,
-                    child: Text(
-                      wallet.walletAddress,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 14,
+              .map(
+                (wallet) => DropdownMenuItem(
+                  value: wallet.walletAddress,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          wallet.walletAddress.isNotEmpty
+                              ? wallet.walletAddress
+                              : "No address",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ))
+                      if (wallet.walletAddress.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => _copyAddress(wallet.walletAddress),
+                          child: Icon(
+                            Icons.copy,
+                            size: 16,
+                            color: _accentColor,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              )
               .toList(),
           onChanged: availableWallets.isEmpty
               ? null
@@ -539,11 +714,13 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   Widget _buildCreateWalletButton() {
     return Center(
       child: GestureDetector(
-        onTap: _isLoading ? null : _createWallet,
+        onTap: _isLoading || _selectedCrypto == null ? null : _createWallet,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           decoration: BoxDecoration(
-            gradient: _isLoading ? const LinearGradient(colors: [Colors.grey, Colors.grey]) : _buttonGradient,
+            gradient: _isLoading
+                ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                : _buttonGradient,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -554,7 +731,9 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
             ],
           ),
           child: Text(
-            'Create $_selectedCrypto Wallet',
+            _selectedCrypto == null
+                ? 'Create Wallet'
+                : 'Create ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto} Wallet',
             style: GoogleFonts.poppins(
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -591,10 +770,7 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
         ),
         prefixIcon: Icon(Icons.attach_money, color: _accentColor),
       ),
-      style: GoogleFonts.poppins(
-        color: _primaryColor,
-        fontSize: 16,
-      ),
+      style: GoogleFonts.poppins(color: _primaryColor, fontSize: 16),
       keyboardType: TextInputType.number,
       onChanged: (value) => _fetchExchangeRate(),
     );
@@ -625,12 +801,16 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailText('Exchange Rate: 1 $_selectedCrypto = $_selectedFiat ${_exchangeRate.toStringAsFixed(2)}'),
-          const SizedBox(height: 12),
-          _buildDetailText('Fee (1.5%): $_selectedFiat ${_fee.toStringAsFixed(2)}'),
+          _buildDetailText(
+            'Exchange Rate: 1 ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto ?? 'N/A'} = $_selectedFiat ${_exchangeRate.toStringAsFixed(2)}',
+          ),
           const SizedBox(height: 12),
           _buildDetailText(
-            'You will receive: ${_cryptoAmount.toStringAsFixed(8)} $_selectedCrypto',
+            'Fee (1.5%): $_selectedFiat ${_fee.toStringAsFixed(2)}',
+          ),
+          const SizedBox(height: 12),
+          _buildDetailText(
+            'You will receive: ${_cryptoAmount.toStringAsFixed(8)} ${coinNameToMainnet[_selectedCrypto] ?? _selectedCrypto ?? 'N/A'}',
             isBold: true,
             color: _accentColor,
           ),
@@ -653,12 +833,16 @@ class _BuyCryptoScreenState extends State<BuyCryptoScreen> {
   Widget _buildConfirmButton() {
     return Center(
       child: GestureDetector(
-        onTap: _isLoading ? null : _confirmTransaction,
+        onTap: _isLoading || _selectedCrypto == null
+            ? null
+            : _confirmTransaction,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 18),
           decoration: BoxDecoration(
-            gradient: _isLoading ? const LinearGradient(colors: [Colors.grey, Colors.grey]) : _buttonGradient,
+            gradient: _isLoading
+                ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                : _buttonGradient,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(

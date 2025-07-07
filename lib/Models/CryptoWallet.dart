@@ -11,7 +11,7 @@ class CryptoWallet {
   CryptoWallet({
     this.id,
     this.userId,
-    required this.currency,
+    required this.currency, 
     this.address,
     this.balance = 0.0,
     this.mnemonic,
